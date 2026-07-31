@@ -106,6 +106,11 @@
   <h1>GPS Load — Data Intake</h1>
   <p class="sub">Bucket 1 · pull the athlete profile + GPS Data tabs, join per player, confirm it read correctly.</p>
 
+  <div class="card" style="padding:14px 20px">
+    <label>Your name (shown on printouts)</label>
+    <input type="text" id="coachName" placeholder="e.g. Henri Joensuu" style="max-width:360px">
+  </div>
+
   <!-- ATHLETE PROFILE -->
   <div class="card">
     <h2>1 · Athlete profiles</h2>
@@ -378,6 +383,12 @@ function renderRead(joined){
 }
 
 /* ---------- Athlete profile (Bucket 4) ---------- */
+function getCoach(){
+  const el=document.getElementById("coachName");
+  const v=el&&el.value&&el.value.trim();
+  if(v)return v;
+  try{return localStorage.getItem("gps_coach")||"";}catch(e){return "";}
+}
 function getMatches(player){
   return window.GPS.joined.filter(j=>j.player===player&&parseDate(j.date)).sort((a,b)=>parseDate(a.date)-parseDate(b.date));
 }
@@ -603,7 +614,13 @@ function athletePageHtml(player){
     ${labeledChart("Max vel % of top",m.map(x=>x.max_vel_pct),"%",null,m.map(x=>x.date),"How close to his top speed he got in the match.","% of max")}
   </div>`;
   const latest=m[m.length-1]||{};
+  const coach=getCoach();
+  const today=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
   return `<div class="athlete-page">
+    <div style="border-bottom:2px solid #141414;padding-bottom:8px;margin-bottom:16px">
+      <div style="font-size:18px;font-weight:600">GPS Season Report</div>
+      <div style="font-size:12px;color:#555">${coach?`Physical Performance Coach — ${coach} · `:""}Generated ${today}</div>
+    </div>
     <h2>${player}</h2>
     <div style="font-size:13px;color:#555;margin:2px 0 12px">${meta||""} · ${m.length} matches · last match ${stats?stats.lastDate:"—"}</div>
     ${charts}
@@ -748,9 +765,16 @@ $("loadBtn").addEventListener("click",()=>{
   loadAll();
 });
 
+/* coach name persistence */
+const coachEl=$("coachName");
+if(coachEl){
+  coachEl.addEventListener("input",()=>{try{localStorage.setItem("gps_coach",coachEl.value.trim());}catch(e){}});
+}
+
 /* restore */
 try{
   ["athUrl","athTab","gpsUrl","gpsTab"].forEach(k=>{const v=localStorage.getItem("gps_"+k);if(v)$(k).value=v;});
+  const c=localStorage.getItem("gps_coach");if(c&&coachEl)coachEl.value=c;
 }catch(e){}
 </script>
 </body>
