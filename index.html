@@ -127,6 +127,13 @@
       <div class="scroll"><table id="preview"></table></div>
       <p class="note">Each GPS row carries its player's profile fields (position, age, injury history). Eyeball against the source — if it lines up, Bucket 1 is done.</p>
     </div>
+
+    <div class="card">
+      <h2>Load engine (Bucket 2)</h2>
+      <p class="h2note">Match-to-match, per player. <b>Int</b> = HSR per minute (intensity, minutes-adjusted). <b>Vol</b> = total HSR (volume). <b>Base</b> = rolling average of the player's last 4 matches. <b>Ratio</b> = latest match ÷ baseline (spotting a spike above their own norm). <b>Int Δ</b> = change vs previous match.</p>
+      <div class="scroll"><table id="engine"></table></div>
+      <p class="note">Bucket 2 is the maths only — no colour flags yet. A player needs 3+ prior matches before the ratio is trustworthy (flagged "building baseline"). Sanity-check the numbers, then Bucket 3 turns this into the green/amber/red read.</p>
+    </div>
   </div>
 </div>
 
@@ -189,6 +196,54 @@ function renderCols(el,fields,mapping,unmatched){
   });
   if(unmatched.length)html+=unmatched.map(u=>`<span class="pill extra">${u} (ignored)</span>`).join("");
   el.innerHTML=html;
+}
+
+/* ---------- Load engine (match-to-match) ---------- */
+function parseDate(s){const d=new Date(s);return isNaN(d)?null:d;}
+function mean(a){return a.length?a.reduce((x,y)=>x+y,0)/a.length:null;}
+function intensityOf(m){ // HSR per minute
+  if(m.hsr_per_min!=null)return m.hsr_per_min;
+  if(m.hsr_19_8!=null&&m.total_duration_min)return m.hsr_19_8/m.total_duration_min;
+  return null;
+}
+function seriesStats(series){ // chronological array of numbers/nulls
+  const clean=series.filter(v=>v!=null);
+  if(!clean.length)return null;
+  const latest=clean[clean.length-1];
+  const priors=clean.slice(Math.max(0,clean.length-5),clean.length-1); // up to last 4 matches
+  const baseline=priors.length?mean(priors):null;
+  const ratio=baseline?latest/baseline:null;
+  const prev=clean.length>=2?clean[clean.length-2]:null;
+  const m2m=prev?(latest-prev)/prev:null;
+  return {latest,baseline,ratio,m2m,nPrior:priors.length,nMatches:clean.length};
+}
+function computePlayer(sessions){
+  const m=sessions.filter(s=>parseDate(s.date)).sort((a,b)=>parseDate(a.date)-parseDate(b.date));
+  if(!m.length)return null;
+  return {matches:m.length,lastDate:m[m.length-1].date,
+    intensity:seriesStats(m.map(intensityOf)),
+    volume:seriesStats(m.map(x=>x.hsr_19_8))};
+}
+function runEngine(joined){
+  const players=[...new Set(joined.map(r=>r.player))];
+  return players.map(p=>({player:p,stats:computePlayer(joined.filter(r=>r.player===p))}));
+}
+function fmt(n,d=0){return n==null?"—":Number(n).toFixed(d);}
+function pct(n){return n==null?"—":(n>=0?"+":"")+(n*100).toFixed(0)+"%";}
+function renderEngine(joined){
+  const res=runEngine(joined);
+  const cols=["Player","Matches","Last match","Int last","Int base","Int ratio","Int Δ","Vol last","Vol base","Vol ratio","Note"];
+  let html="<tr>"+cols.map(c=>`<th>${c}</th>`).join("")+"</tr>";
+  res.forEach(r=>{
+    const s=r.stats||{},I=s.intensity||{},V=s.volume||{};
+    const note = (I.nPrior!=null&&I.nPrior<3) ? "building baseline" : "";
+    html+="<tr>"+[
+      r.player, s.matches||0, s.lastDate||"—",
+      fmt(I.latest,2), fmt(I.baseline,2), I.ratio==null?"—":fmt(I.ratio,2), pct(I.m2m),
+      fmt(V.latest), fmt(V.baseline), V.ratio==null?"—":fmt(V.ratio,2), note
+    ].map(v=>`<td>${v}</td>`).join("")+"</tr>";
+  });
+  document.getElementById("engine").innerHTML=html;
 }
 
 /* ---------- Sheet URL ---------- */
@@ -255,6 +310,7 @@ async function loadAll(){
   renderSummary(athletes,sessions,joined);
   renderWarn(unmatchedPlayers,noData);
   renderPreview(joined);
+  renderEngine(joined);
   $("results").classList.remove("hide");
 }
 
