@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPS Load — Data Intake</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root{
+    --bg:#f4f2ee;--ink:#141414;--muted:#6b6864;--line:#d8d4cd;--card:#fbfaf8;
+    --ok:#2f7d47;--warn:#b7791f;--bad:#a02c2c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Neue Haas Grotesk Display Pro","Helvetica Neue",Arial,system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;line-height:1.45;}
+  .wrap{max-width:1080px;margin:0 auto;padding:40px 28px 80px}
+  h1{font-size:24px;font-weight:600;letter-spacing:-.01em;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 28px}
+  h2{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 4px}
+  .h2note{font-size:12.5px;color:var(--muted);margin:0 0 14px}
+  .card{background:var(--card);border:1px solid var(--line);padding:20px;margin-bottom:20px}
+  .slot{border:1px solid var(--line);padding:16px;margin-bottom:16px;background:#fff}
+  .slot h3{font-size:14px;margin:0 0 12px;font-weight:600}
+  label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px;text-transform:uppercase;letter-spacing:.05em}
+  input[type=text],textarea{width:100%;font:inherit;font-size:14px;padding:10px 12px;
+    border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:0;}
+  textarea{min-height:90px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+  .row > div{flex:1;min-width:180px}
+  button{font:inherit;font-size:13px;font-weight:600;padding:11px 18px;border:1px solid var(--ink);
+    background:var(--ink);color:var(--bg);cursor:pointer;border-radius:0;}
+  button.secondary{background:transparent;color:var(--ink)}
+  button.big{padding:13px 26px;font-size:14px}
+  button:hover{opacity:.88}
+  .tabs{display:flex;margin-bottom:14px;border-bottom:1px solid var(--line)}
+  .tab{padding:7px 14px;font-size:12.5px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tab.active{color:var(--ink);border-bottom-color:var(--ink);font-weight:600}
+  .hide{display:none}
+  .pill{display:inline-block;padding:2px 8px;font-size:11.5px;border:1px solid var(--line);margin:2px 4px 2px 0;background:#fff}
+  .pill.found{border-color:var(--ok);color:var(--ok)}
+  .pill.missing{border-color:var(--bad);color:var(--bad)}
+  .pill.extra{border-color:var(--muted);color:var(--muted)}
+  .pill.warn{border-color:var(--warn);color:var(--warn)}
+  .summary{display:flex;gap:28px;flex-wrap:wrap;margin:6px 0 2px}
+  .metric{font-size:13px;color:var(--muted)}
+  .metric b{display:block;font-size:22px;color:var(--ink);font-weight:600}
+  table{border-collapse:collapse;width:100%;font-size:12.5px;margin-top:8px}
+  th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;white-space:nowrap}
+  th{background:#efece6;font-weight:600;position:sticky;top:0}
+  .scroll{overflow:auto;max-height:420px;border:1px solid var(--line)}
+  .note{font-size:12.5px;color:var(--muted);margin-top:10px}
+  .err{color:var(--bad);font-size:13px;margin-top:6px;min-height:0}
+  .warnbox{color:var(--warn);font-size:12.5px;margin-top:10px}
+  code{background:#efece6;padding:1px 5px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>GPS Load — Data Intake</h1>
+  <p class="sub">Bucket 1 · pull the athlete profile + GPS Data tabs, join per player, confirm it read correctly.</p>
+
+  <!-- ATHLETE PROFILE -->
+  <div class="card">
+    <h2>1 · Athlete profiles</h2>
+    <p class="h2note">Roster: id, name, position, birthdate, age, height, weight, injury history.</p>
+    <div class="slot">
+      <div class="tabs" data-slot="ath">
+        <div class="tab active" data-src="sheet">Google Sheet (live)</div>
+        <div class="tab" data-src="paste">Paste CSV</div>
+      </div>
+      <div id="ath-sheet">
+        <div class="row">
+          <div><label>Published link or Sheet ID</label><input type="text" id="athUrl" placeholder="publish-to-web CSV link, or sheet ID"></div>
+          <div style="flex:0 0 180px"><label>Tab name</label><input type="text" id="athTab" placeholder="Athletes" value="Athletes"></div>
+        </div>
+      </div>
+      <div id="ath-paste" class="hide">
+        <label>Paste CSV</label>
+        <textarea id="athPaste" placeholder="id,name,position,birthdate,age,height_cm,weight_kg,injury_hx"></textarea>
+      </div>
+      <div class="err" id="athErr"></div>
+    </div>
+  </div>
+
+  <!-- GPS DATA -->
+  <div class="card">
+    <h2>2 · GPS data</h2>
+    <p class="h2note">One row per player per session.</p>
+    <div class="slot">
+      <div class="tabs" data-slot="gps">
+        <div class="tab active" data-src="sheet">Google Sheet (live)</div>
+        <div class="tab" data-src="paste">Paste CSV</div>
+      </div>
+      <div id="gps-sheet">
+        <div class="row">
+          <div><label>Published link or Sheet ID</label><input type="text" id="gpsUrl" placeholder="publish-to-web CSV link, or sheet ID"></div>
+          <div style="flex:0 0 180px"><label>Tab name</label><input type="text" id="gpsTab" placeholder="GPS Data" value="GPS Data"></div>
+        </div>
+      </div>
+      <div id="gps-paste" class="hide">
+        <label>Paste CSV</label>
+        <textarea id="gpsPaste" placeholder="date,player,total_distance,hsr_19_8,..."></textarea>
+      </div>
+      <div class="err" id="gpsErr"></div>
+    </div>
+    <p class="note">If both tabs live in the same sheet: paste the <b>Sheet ID</b> once in each box and just change the tab name. Same-sheet must be shared "anyone with the link can view"; published links work per-tab. Join key is the player <b>name</b> (falls back to <code>id</code> if both sheets carry it).</p>
+    <div style="margin-top:16px"><button class="big" id="loadBtn">Load &amp; join</button></div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results" class="hide">
+    <div class="card">
+      <h2>Column check</h2>
+      <div style="margin-bottom:8px"><b style="font-size:12px">Athletes</b><div id="athCols" style="margin-top:6px"></div></div>
+      <div><b style="font-size:12px">GPS</b><div id="gpsCols" style="margin-top:6px"></div></div>
+    </div>
+
+    <div class="card">
+      <h2>Join result</h2>
+      <div class="summary" id="summary"></div>
+      <div class="warnbox" id="joinWarn"></div>
+    </div>
+
+    <div class="card">
+      <h2>Preview <span id="previewCount" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)"></span></h2>
+      <div class="scroll"><table id="preview"></table></div>
+      <p class="note">Each GPS row carries its player's profile fields (position, age, injury history). Eyeball against the source — if it lines up, Bucket 1 is done.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- Schemas ---------- */
+const ATH_FIELDS=[
+  {key:"id",         label:"ID",          required:false, aliases:["id","playerid","athleteid"]},
+  {key:"name",       label:"Name",        required:true,  aliases:["name","player","athlete","playername","fullname"]},
+  {key:"position",   label:"Position",    required:false, aliases:["position","pos","role"]},
+  {key:"birthdate",  label:"Birthdate",   required:false, aliases:["birthdate","dob","dateofbirth"]},
+  {key:"age",        label:"Age",         required:false, aliases:["age"], num:true},
+  {key:"height_cm",  label:"Height (cm)", required:false, aliases:["heightcm","height","ht"], num:true},
+  {key:"weight_kg",  label:"Weight (kg)", required:false, aliases:["weightkg","weight","wt","mass"], num:true},
+  {key:"injury_hx",  label:"Injury history",required:false,aliases:["injuryhx","injuryhistory","injuries","history"]},
+];
+const GPS_FIELDS=[
+  {key:"date",             label:"Date",            required:true,  aliases:["date","sessiondate","day"]},
+  {key:"player",           label:"Player",          required:true,  aliases:["player","name","athlete","playername"]},
+  {key:"id",               label:"ID",              required:false, aliases:["id","playerid","athleteid"]},
+  {key:"session_type",     label:"Session type",    required:false, aliases:["sessiontype","session","type","md","mdcode"]},
+  {key:"total_duration_min",label:"Total duration", required:false, aliases:["totalduration","duration","durationmin","mins","minutes","totaldurationmin"], num:true},
+  {key:"total_distance",   label:"Total distance",  required:true,  aliases:["totaldistance","td","distance","totdist","totaldist"], num:true},
+  {key:"dist_per_min",     label:"Dist/min",        required:false, aliases:["distpermin","distanceperminute","mpermin","mmin","totdistpermin","totdistanceperminute","totdistanceperminutem","totaldistanceperminute","distperminm"], num:true},
+  {key:"hsr_19_8",         label:"HSR >19.8",       required:true,  aliases:["hsr198","hsr","highspeedrunning","hsrd","hsr198km","highspeeddistance","hsrdistance"], num:true},
+  {key:"hsr_per_min",      label:"HSR/min",         required:false, aliases:["hsrpermin","hsrperminute","hsrmin"], num:true},
+  {key:"sprint_efforts",   label:"Sprint efforts",  required:false, aliases:["sprintefforts","sprints","sprinteffs","sprintcount","noofsprints"], num:true},
+  {key:"sprint_distance",  label:"Sprint distance", required:false, aliases:["sprintdistance","sprintdist","sprintdistancem"], num:true},
+  {key:"accel_decel_count",label:"Accel/decel count",required:false,aliases:["acceldecelcount","acceldecel","accdec","accelerations","decelerations","hiaccdec","accdeccount"], num:true},
+  {key:"max_velocity",     label:"Max velocity",    required:false, aliases:["maxvelocity","maxvel","maxspeed","topspeed","vmax"], num:true},
+  {key:"max_vel_pct",      label:"Max vel % max",   required:false, aliases:["maxvelpct","maxvelmax","pctmaxvel","maxvelpercent","percentmaxvelocity","maxvelofmax"], num:true},
+  {key:"hr_avg",           label:"HR avg",          required:false, aliases:["hravg","avghr","averageheartrate","hrmean"], num:true},
+  {key:"hr_max",           label:"HR max",          required:false, aliases:["hrmax","maxhr","maxheartrate"], num:true},
+];
+
+window.GPS={athletes:[],sessions:[],joined:[]};
+
+/* ---------- Helpers ---------- */
+const norm=s=>(s||"").toString().normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
+const $=id=>document.getElementById(id);
+function toNumber(v){if(v==null||v==="")return null;const n=parseFloat(v.toString().replace(/[^0-9.\-]/g,""));return isNaN(n)?null:n;}
+
+function buildMapping(fields,headers){
+  const mapping={},used=new Set();
+  fields.forEach(f=>{const wanted=[f.key,...f.aliases].map(norm);
+    const hit=headers.find(h=>!used.has(h)&&wanted.includes(norm(h)));
+    if(hit){mapping[f.key]=hit;used.add(hit);}});
+  return {mapping,unmatched:headers.filter(h=>!used.has(h))};
+}
+function normalizeRows(fields,raw,mapping){
+  return raw.map(r=>{const o={};fields.forEach(f=>{
+    let v=mapping[f.key]?r[mapping[f.key]]:null;
+    o[f.key]=f.num?toNumber(v):(v==null?null:v.toString().trim());
+  });return o;});
+}
+function renderCols(el,fields,mapping,unmatched){
+  let html="";
+  fields.forEach(f=>{
+    if(mapping[f.key])html+=`<span class="pill found">${f.label} ✓</span>`;
+    else html+=`<span class="pill ${f.required?'missing':'extra'}">${f.label} ${f.required?'✗ required':'—'}</span>`;
+  });
+  if(unmatched.length)html+=unmatched.map(u=>`<span class="pill extra">${u} (ignored)</span>`).join("");
+  el.innerHTML=html;
+}
+
+/* ---------- Sheet URL ---------- */
+function sheetCsvUrl(input,tab){
+  input=input.trim();
+  if(/output=csv/i.test(input))return input;
+  if(/\/pub/i.test(input))return input+(input.includes("?")?"&":"?")+"output=csv";
+  let id=input;const m=input.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);if(m)id=m[1];
+  return `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab||"Sheet1")}`;
+}
+
+/* ---------- Fetch one source (returns Promise of {data,fields}) ---------- */
+function fetchSource(kind){
+  const isSheet=document.querySelector(`.tabs[data-slot="${kind}"] .tab.active`).dataset.src==="sheet";
+  return new Promise((resolve,reject)=>{
+    if(isSheet){
+      const url=$(kind+"Url").value.trim(),tab=$(kind+"Tab").value.trim();
+      if(!url){reject("no link");return;}
+      Papa.parse(sheetCsvUrl(url,tab),{download:true,header:true,skipEmptyLines:true,
+        complete:r=>resolve({data:r.data,fields:r.meta.fields||[]}),
+        error:e=>reject("fetch failed: "+e.message)});
+    }else{
+      const txt=$(kind+"Paste").value.trim();
+      if(!txt){reject("no csv");return;}
+      const r=Papa.parse(txt,{header:true,skipEmptyLines:true});
+      resolve({data:r.data,fields:r.meta.fields||[]});
+    }
+  });
+}
+
+/* ---------- Load & join ---------- */
+async function loadAll(){
+  $("athErr").textContent="";$("gpsErr").textContent="";
+  let ath,gps;
+  try{ath=await fetchSource("ath");}catch(e){$("athErr").textContent="Athletes: "+e;return;}
+  try{gps=await fetchSource("gps");}catch(e){$("gpsErr").textContent="GPS: "+e;return;}
+
+  const aMap=buildMapping(ATH_FIELDS,ath.fields);
+  const gMap=buildMapping(GPS_FIELDS,gps.fields);
+  const athletes=normalizeRows(ATH_FIELDS,ath.data,aMap.mapping).filter(r=>r.name);
+  const sessions=normalizeRows(GPS_FIELDS,gps.data,gMap.mapping).filter(r=>r.player&&r.date);
+
+  // index athletes by name and id
+  const byName={},byId={};
+  athletes.forEach(a=>{if(a.name)byName[norm(a.name)]=a;if(a.id)byId[norm(a.id)]=a;});
+
+  const unmatchedPlayers=new Set();
+  const joined=sessions.map(s=>{
+    let a=(s.id&&byId[norm(s.id)])||byName[norm(s.player)]||null;
+    if(!a)unmatchedPlayers.add(s.player);
+    return Object.assign({},s,{
+      position:a?a.position:null,age:a?a.age:null,injury_hx:a?a.injury_hx:null,
+      height_cm:a?a.height_cm:null,weight_kg:a?a.weight_kg:null
+    });
+  });
+
+  const gpsNames=new Set(sessions.map(s=>norm(s.player)));
+  const noData=athletes.filter(a=>!gpsNames.has(norm(a.name))).map(a=>a.name);
+
+  window.GPS={athletes,sessions,joined};
+
+  renderCols($("athCols"),ATH_FIELDS,aMap.mapping,aMap.unmatched);
+  renderCols($("gpsCols"),GPS_FIELDS,gMap.mapping,gMap.unmatched);
+  renderSummary(athletes,sessions,joined);
+  renderWarn(unmatchedPlayers,noData);
+  renderPreview(joined);
+  $("results").classList.remove("hide");
+}
+
+function renderSummary(athletes,sessions,joined){
+  const dates=sessions.map(r=>r.date).filter(Boolean).sort();
+  const matched=joined.filter(j=>j.position!==null||j.age!==null).length;
+  $("summary").innerHTML=[
+    ["Athletes on roster",athletes.length],
+    ["GPS sessions",sessions.length],
+    ["Sessions matched to a profile",matched+" / "+sessions.length],
+    ["Date range",dates.length?`${dates[0]} → ${dates[dates.length-1]}`:"—"],
+  ].map(([k,v])=>`<div class="metric">${k}<b>${v}</b></div>`).join("");
+}
+function renderWarn(unmatchedPlayers,noData){
+  let msg=[];
+  if(unmatchedPlayers.size)msg.push("GPS rows with no matching profile (check name spelling): "+[...unmatchedPlayers].join(", "));
+  if(noData.length)msg.push("Roster players with no GPS data yet: "+noData.join(", "));
+  $("joinWarn").innerHTML=msg.length?msg.map(m=>"⚠ "+m).join("<br>"):"";
+}
+function renderPreview(joined){
+  const cols=[
+    {k:"date",l:"Date"},{k:"player",l:"Player"},{k:"position",l:"Pos"},{k:"age",l:"Age"},
+    {k:"session_type",l:"Session"},{k:"total_distance",l:"Total dist"},{k:"hsr_19_8",l:"HSR"},
+    {k:"sprint_distance",l:"Sprint dist"},{k:"max_vel_pct",l:"MaxVel%"},{k:"injury_hx",l:"Injury hx"}
+  ];
+  const show=joined.slice(0,15);
+  let html="<tr>"+cols.map(c=>`<th>${c.l}</th>`).join("")+"</tr>";
+  show.forEach(r=>{html+="<tr>"+cols.map(c=>`<td>${r[c.k]==null?'<span style="color:#bbb">—</span>':r[c.k]}</td>`).join("")+"</tr>";});
+  $("preview").innerHTML=html;
+  $("previewCount").textContent=`(first ${show.length} of ${joined.length})`;
+}
+
+/* ---------- Tab toggles ---------- */
+document.querySelectorAll(".tabs").forEach(group=>{
+  const slot=group.dataset.slot;
+  group.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{
+    group.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+    t.classList.add("active");
+    $(slot+"-sheet").classList.toggle("hide",t.dataset.src!=="sheet");
+    $(slot+"-paste").classList.toggle("hide",t.dataset.src!=="paste");
+  }));
+});
+
+$("loadBtn").addEventListener("click",()=>{
+  try{
+    localStorage.setItem("gps_athUrl",$("athUrl").value);localStorage.setItem("gps_athTab",$("athTab").value);
+    localStorage.setItem("gps_gpsUrl",$("gpsUrl").value);localStorage.setItem("gps_gpsTab",$("gpsTab").value);
+  }catch(e){}
+  loadAll();
+});
+
+/* restore */
+try{
+  ["athUrl","athTab","gpsUrl","gpsTab"].forEach(k=>{const v=localStorage.getItem("gps_"+k);if(v)$(k).value=v;});
+}catch(e){}
+</script>
+</body>
+</html>
