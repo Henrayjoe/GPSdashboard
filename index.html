@@ -65,6 +65,37 @@
   .knums{display:flex;gap:18px;font-size:12px;color:var(--muted);margin-bottom:8px}
   .knums b{display:block;font-size:16px;color:var(--ink);font-weight:600}
   .why{font-size:13px;line-height:1.4;color:var(--ink);border-top:1px solid var(--line);padding-top:10px}
+  .pcard{cursor:pointer;transition:border-color .12s}
+  .pcard:hover{border-color:var(--ink)}
+  .pcard .open{font-size:11px;color:var(--muted);margin-top:8px;text-align:right}
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(20,20,20,.45);display:none;align-items:flex-start;justify-content:center;z-index:50;overflow:auto;padding:32px 16px}
+  .overlay.show{display:flex}
+  .modal{background:var(--bg);border:1px solid var(--line);max-width:820px;width:100%;padding:28px}
+  .modal .mtop{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:6px}
+  .modal h3{font-size:22px;font-weight:600;margin:0}
+  .modal .msub{font-size:13px;color:var(--muted);margin:2px 0 0}
+  .mbtns{display:flex;gap:8px}
+  .charts{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+  .chart{border:1px solid var(--line);background:#fff;padding:12px}
+  .chart .clab{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  .chart .cval{font-size:18px;font-weight:600;margin:2px 0 4px}
+  .notes-list{margin:6px 0 0;padding:0;list-style:none}
+  .notes-list li{border-top:1px solid var(--line);padding:9px 0;font-size:13px}
+  .notes-list .nd{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+  .notes-list ul{margin:2px 0 0 16px;padding:0}
+  .notes-list ul li{border:0;padding:1px 0;font-size:13px}
+  /* print */
+  #printArea{display:none}
+  @media print{
+    body *{visibility:hidden}
+    #printArea,#printArea *{visibility:visible}
+    #printArea{display:block;position:absolute;left:0;top:0;width:100%}
+    .athlete-page{page-break-after:always;padding:24px 8px}
+    .athlete-page:last-child{page-break-after:auto}
+  }
+  .athlete-page h2{color:var(--ink);text-transform:none;letter-spacing:0;font-size:20px}
+  .pp-charts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
   .err{color:var(--bad);font-size:13px;margin-top:6px;min-height:0}
   .warnbox{color:var(--warn);font-size:12.5px;margin-top:10px}
   code{background:#efece6;padding:1px 5px;font-size:12px}
@@ -144,8 +175,11 @@
     </div>
 
     <div class="card">
-      <h2>The read (Bucket 3)</h2>
-      <p class="h2note">One card per player, sorted most-concerning first. Flag is driven by intensity (HSR/min) vs their own 4-match norm. Trend line shows their match HSR/min over the season. Compared to themselves, never the squad.</p>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
+        <h2>The read (Bucket 3)</h2>
+        <button class="secondary" id="exportAll" style="font-size:12px;padding:7px 12px">Export all as PDF</button>
+      </div>
+      <p class="h2note">One card per player, sorted most-concerning first. Flag is driven by intensity (HSR/min) vs their own 4-match norm. Trend line shows their match HSR/min over the season. Compared to themselves, never the squad. <b>Click a card</b> to open the full GPS profile.</p>
       <div class="read-grid" id="read"></div>
       <p class="note">Match-only data: a red spike means "watch how you load the following training week," not an injury verdict. Grey = fewer than 3 prior matches, ratio not yet trustworthy.</p>
     </div>
@@ -157,6 +191,9 @@
       <p class="note">Bucket 2 is the maths only — no colour flags yet. A player needs 3+ prior matches before the ratio is trustworthy (flagged "building baseline"). Sanity-check the numbers, then Bucket 3 turns this into the green/amber/red read.</p>
     </div>
   </div>
+
+  <div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+  <div id="printArea"></div>
 </div>
 
 <script>
@@ -313,7 +350,7 @@ function renderRead(joined){
   res.forEach(({r,I,V,f,prof})=>{
     const series=(joined.filter(j=>j.player===r.player).filter(s=>parseDate(s.date)).sort((a,b)=>parseDate(a.date)-parseDate(b.date)).map(intensityOf));
     const meta=[prof.position,prof.age?prof.age+"y":null].filter(Boolean).join(" · ");
-    html+=`<div class="pcard">
+    html+=`<div class="pcard" data-player="${(r.player||"").replace(/"/g,"&quot;")}">
       <div class="top">
         <div><div class="who">${r.player}</div><div class="sub2">${meta||"—"} · ${r.stats?r.stats.matches:0} matches · last ${r.stats?r.stats.lastDate:"—"}</div></div>
         <span class="flag ${f.level}"><span class="dot"></span>${f.label}</span>
@@ -325,9 +362,101 @@ function renderRead(joined){
         <div>Ratio<b>${I&&I.ratio!=null?I.ratio.toFixed(2):"—"}</b></div>
       </div>
       <div class="why">${whyText(f,I,V)}</div>
+      <div class="open">Open profile →</div>
     </div>`;
   });
   document.getElementById("read").innerHTML=html||`<p class="note">No players to show.</p>`;
+}
+
+/* ---------- Athlete profile (Bucket 4) ---------- */
+function getMatches(player){
+  return window.GPS.joined.filter(j=>j.player===player&&parseDate(j.date)).sort((a,b)=>parseDate(a.date)-parseDate(b.date));
+}
+const pctChange=(a,b)=>(b==null||a==null||b===0)?null:(a-b)/b;
+function changeNotes(matches){
+  const out=[];
+  for(let i=1;i<matches.length;i++){
+    const c=matches[i],p=matches[i-1],notes=[];
+    const iC=intensityOf(c),iP=intensityOf(p),ip=pctChange(iC,iP);
+    if(ip!=null&&Math.abs(ip)>=0.08)notes.push({mag:Math.abs(ip),t:`High-speed running per minute ${ip>0?"up":"down"} ${Math.abs(Math.round(ip*100))}% (${iC.toFixed(2)}/min).`});
+    const dp=pctChange(c.total_distance,p.total_distance);
+    if(dp!=null&&Math.abs(dp)>=0.08)notes.push({mag:Math.abs(dp),t:`Total distance ${dp>0?"up":"down"} ${Math.abs(Math.round(dp*100))}%.`});
+    const sp=pctChange(c.sprint_distance,p.sprint_distance);
+    if(sp!=null&&Math.abs(sp)>=0.08)notes.push({mag:Math.abs(sp),t:`Sprint distance ${sp>0?"up":"down"} ${Math.abs(Math.round(sp*100))}%.`});
+    if(c.max_vel_pct!=null&&p.max_vel_pct!=null&&Math.abs(c.max_vel_pct-p.max_vel_pct)>=3)notes.push({mag:Math.abs(c.max_vel_pct-p.max_vel_pct)/100,t:`Reached ${c.max_vel_pct}% of top speed (${c.max_vel_pct>p.max_vel_pct?"up":"down"} ${Math.abs(c.max_vel_pct-p.max_vel_pct)} pts).`});
+    const ap=pctChange(c.accel_decel_count,p.accel_decel_count);
+    if(ap!=null&&Math.abs(ap)>=0.10)notes.push({mag:Math.abs(ap)*0.9,t:`Accel/decel count ${ap>0?"up":"down"} ${Math.abs(Math.round(ap*100))}%.`});
+    if(c.total_duration_min!=null&&p.total_duration_min!=null&&Math.abs(c.total_duration_min-p.total_duration_min)>=10)notes.push({mag:0.05,t:`Played ${c.total_duration_min} min (${c.total_duration_min>p.total_duration_min?"+":""}${c.total_duration_min-p.total_duration_min} vs previous).`});
+    notes.sort((a,b)=>b.mag-a.mag);
+    out.push({date:c.date,prev:p.date,notes:notes.slice(0,3).map(n=>n.t)});
+  }
+  return out;
+}
+function labeledChart(label,vals,unit,color){
+  const clean=vals.filter(v=>v!=null);
+  const val=clean.length?clean[clean.length-1]:null;
+  return `<div class="chart"><div class="clab">${label}</div><div class="cval">${val==null?"—":(Math.round(val*100)/100)}${unit||""}</div>${sparkline(vals,color||"#141414")}</div>`;
+}
+function notesHtml(matches){
+  const cn=changeNotes(matches);
+  if(!cn.length) return `<p class="note">Only one match logged — no changes to compare yet.</p>`;
+  return `<ul class="notes-list">`+cn.slice().reverse().map(s=>
+    `<li><div class="nd">${s.date} · vs ${s.prev}</div>${s.notes.length?`<ul>${s.notes.map(n=>`<li>${n}</li>`).join("")}</ul>`:`<span style="color:var(--muted);font-size:12.5px">No notable change.</span>`}</li>`
+  ).join("")+`</ul>`;
+}
+function openAthlete(player){
+  const m=getMatches(player);
+  const stats=computePlayer(m); const f=flagFor(stats&&stats.intensity);
+  const prof=m[0]||{};
+  const meta=[prof.position,prof.age?prof.age+"y":null].filter(Boolean).join(" · ");
+  const charts=`<div class="charts">
+    ${labeledChart("HSR / min",m.map(intensityOf),"",FLAG_COLOR[f.level])}
+    ${labeledChart("Total distance (m)",m.map(x=>x.total_distance))}
+    ${labeledChart("Sprint distance (m)",m.map(x=>x.sprint_distance))}
+    ${labeledChart("Max vel % of top",m.map(x=>x.max_vel_pct),"%")}
+  </div>`;
+  document.getElementById("modal").innerHTML=`
+    <div class="mtop">
+      <div><h3>${player}</h3><div class="msub">${meta||"—"} · ${m.length} matches · last ${stats?stats.lastDate:"—"}</div></div>
+      <div class="mbtns">
+        <button id="pdfOne">Save as PDF</button>
+        <button class="secondary" id="closeModal">Close</button>
+      </div>
+    </div>
+    <span class="flag ${f.level}" style="margin-top:4px"><span class="dot"></span>${f.label}</span>
+    ${charts}
+    <h2 style="font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:8px 0 0">Changes between game summaries</h2>
+    ${notesHtml(m)}`;
+  document.getElementById("overlay").classList.add("show");
+  document.getElementById("closeModal").onclick=closeAthlete;
+  document.getElementById("pdfOne").onclick=()=>exportPDF([player]);
+}
+function closeAthlete(){document.getElementById("overlay").classList.remove("show");}
+
+/* ---------- PDF (print) ---------- */
+function athletePageHtml(player){
+  const m=getMatches(player);
+  const stats=computePlayer(m); const f=flagFor(stats&&stats.intensity);
+  const prof=m[0]||{};
+  const meta=[prof.position,prof.age?prof.age+"y":null].filter(Boolean).join(" · ");
+  const charts=`<div class="pp-charts">
+    ${labeledChart("HSR / min",m.map(intensityOf),"",FLAG_COLOR[f.level])}
+    ${labeledChart("Total distance (m)",m.map(x=>x.total_distance))}
+    ${labeledChart("Sprint distance (m)",m.map(x=>x.sprint_distance))}
+    ${labeledChart("Max vel % of top",m.map(x=>x.max_vel_pct),"%")}
+  </div>`;
+  const latest=m[m.length-1]||{};
+  return `<div class="athlete-page">
+    <h2>${player}</h2>
+    <div style="font-size:13px;color:#555;margin:2px 0 12px">${meta||""} · ${m.length} matches · last match ${stats?stats.lastDate:"—"}</div>
+    ${charts}
+    <div style="font-size:13px;font-weight:600;margin:6px 0 4px">Changes between game summaries</div>
+    ${notesHtml(m)}
+  </div>`;
+}
+function exportPDF(players){
+  document.getElementById("printArea").innerHTML=players.map(athletePageHtml).join("");
+  window.print();
 }
 
 /* ---------- Sheet URL ---------- */
@@ -437,6 +566,19 @@ document.querySelectorAll(".tabs").forEach(group=>{
     $(slot+"-sheet").classList.toggle("hide",t.dataset.src!=="sheet");
     $(slot+"-paste").classList.toggle("hide",t.dataset.src!=="paste");
   }));
+});
+
+/* profile open (delegated), close, export all */
+$("read").addEventListener("click",e=>{
+  const card=e.target.closest(".pcard");
+  if(card&&card.dataset.player)openAthlete(card.dataset.player);
+});
+$("overlay").addEventListener("click",e=>{if(e.target.id==="overlay")closeAthlete();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeAthlete();});
+$("exportAll").addEventListener("click",()=>{
+  const players=[...new Set(window.GPS.joined.map(j=>j.player))];
+  if(!players.length){alert("Load data first.");return;}
+  exportPDF(players);
 });
 
 $("loadBtn").addEventListener("click",()=>{
