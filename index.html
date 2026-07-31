@@ -50,6 +50,21 @@
   th{background:#efece6;font-weight:600;position:sticky;top:0}
   .scroll{overflow:auto;max-height:420px;border:1px solid var(--line)}
   .note{font-size:12.5px;color:var(--muted);margin-top:10px}
+  .read-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:6px}
+  .pcard{border:1px solid var(--line);background:#fff;padding:16px 16px 14px}
+  .pcard .top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .pcard .who{font-size:15px;font-weight:600;line-height:1.2}
+  .pcard .sub2{font-size:12px;color:var(--muted);margin-top:2px}
+  .flag{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;padding:3px 9px;border:1px solid;white-space:nowrap}
+  .flag.green{color:var(--ok);border-color:var(--ok)}
+  .flag.amber{color:var(--warn);border-color:var(--warn)}
+  .flag.red{color:var(--bad);border-color:var(--bad)}
+  .flag.grey{color:var(--muted);border-color:var(--line)}
+  .dot{width:8px;height:8px;border-radius:50%;background:currentColor;display:inline-block}
+  .spark{margin:12px 0 10px}
+  .knums{display:flex;gap:18px;font-size:12px;color:var(--muted);margin-bottom:8px}
+  .knums b{display:block;font-size:16px;color:var(--ink);font-weight:600}
+  .why{font-size:13px;line-height:1.4;color:var(--ink);border-top:1px solid var(--line);padding-top:10px}
   .err{color:var(--bad);font-size:13px;margin-top:6px;min-height:0}
   .warnbox{color:var(--warn);font-size:12.5px;margin-top:10px}
   code{background:#efece6;padding:1px 5px;font-size:12px}
@@ -126,6 +141,13 @@
       <h2>Preview <span id="previewCount" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)"></span></h2>
       <div class="scroll"><table id="preview"></table></div>
       <p class="note">Each GPS row carries its player's profile fields (position, age, injury history). Eyeball against the source — if it lines up, Bucket 1 is done.</p>
+    </div>
+
+    <div class="card">
+      <h2>The read (Bucket 3)</h2>
+      <p class="h2note">One card per player, sorted most-concerning first. Flag is driven by intensity (HSR/min) vs their own 4-match norm. Trend line shows their match HSR/min over the season. Compared to themselves, never the squad.</p>
+      <div class="read-grid" id="read"></div>
+      <p class="note">Match-only data: a red spike means "watch how you load the following training week," not an injury verdict. Grey = fewer than 3 prior matches, ratio not yet trustworthy.</p>
     </div>
 
     <div class="card">
@@ -246,6 +268,68 @@ function renderEngine(joined){
   document.getElementById("engine").innerHTML=html;
 }
 
+/* ---------- The read (Bucket 3) ---------- */
+function flagFor(I){
+  if(!I||I.ratio==null||I.nPrior<3) return {level:"grey",label:"Building baseline",rank:0};
+  const r=I.ratio;
+  if(r>=1.5)            return {level:"red",  label:"Spike",      rank:4};
+  if(r>1.3)             return {level:"amber",label:"Above norm", rank:3};
+  if(r<0.8)             return {level:"amber",label:"Below norm", rank:2};
+  return                        {level:"green",label:"In range",  rank:1};
+}
+function whyText(f,I,V){
+  if(f.level==="grey") return `Only ${I&&I.nMatches?I.nMatches:0} match(es) logged — needs 3+ to read a trend.`;
+  const rp=Math.round((I.ratio-1)*100);
+  const vp=V&&V.ratio!=null?Math.round((V.ratio-1)*100):null;
+  const vtail = vp!=null ? ` Volume (total HSR) ${vp>=0?"+":""}${vp}% vs norm.` : "";
+  if(f.level==="red")   return `Latest match HSR/min was +${rp}% above their 4-match norm — a sharp spike. Watch how you load the following training week.${vtail}`;
+  if(f.label==="Above norm") return `HSR/min +${rp}% above their match norm — elevated but not extreme. Keep an eye on the next training week.${vtail}`;
+  if(f.label==="Below norm") return `HSR/min ${rp}% below their match norm — check minutes played, role, or freshness before reading it as fatigue.${vtail}`;
+  return `HSR/min in line with their match norm (${rp>=0?"+":""}${rp}%). Nothing flagged.${vtail}`;
+}
+function sparkline(vals,flagColor){
+  const clean=vals.filter(v=>v!=null);
+  const w=250,h=46;
+  if(clean.length<2) return `<div class="spark" style="font-size:12px;color:var(--muted)">Not enough matches to plot</div>`;
+  const min=Math.min(...clean),max=Math.max(...clean),rng=(max-min)||1;
+  const step=w/(clean.length-1);
+  const pts=clean.map((v,i)=>[i*step,h-5-((v-min)/rng)*(h-10)]);
+  const path=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+  const last=pts[pts.length-1];
+  return `<div class="spark"><svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="max-width:100%">
+    <path d="${path}" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round"/>
+    <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3.5" fill="${flagColor}"/>
+  </svg></div>`;
+}
+const FLAG_COLOR={green:"#2f7d47",amber:"#b7791f",red:"#a02c2c",grey:"#9a968f"};
+function renderRead(joined){
+  const res=runEngine(joined).map(r=>{
+    const I=r.stats&&r.stats.intensity, V=r.stats&&r.stats.volume;
+    const f=flagFor(I);
+    const prof=joined.find(j=>j.player===r.player)||{};
+    return {r,I,V,f,prof};
+  }).sort((a,b)=>b.f.rank-a.f.rank);
+  let html="";
+  res.forEach(({r,I,V,f,prof})=>{
+    const series=(joined.filter(j=>j.player===r.player).filter(s=>parseDate(s.date)).sort((a,b)=>parseDate(a.date)-parseDate(b.date)).map(intensityOf));
+    const meta=[prof.position,prof.age?prof.age+"y":null].filter(Boolean).join(" · ");
+    html+=`<div class="pcard">
+      <div class="top">
+        <div><div class="who">${r.player}</div><div class="sub2">${meta||"—"} · ${r.stats?r.stats.matches:0} matches · last ${r.stats?r.stats.lastDate:"—"}</div></div>
+        <span class="flag ${f.level}"><span class="dot"></span>${f.label}</span>
+      </div>
+      ${sparkline(series,FLAG_COLOR[f.level])}
+      <div class="knums">
+        <div>HSR/min<b>${I&&I.latest!=null?I.latest.toFixed(2):"—"}</b></div>
+        <div>Norm<b>${I&&I.baseline!=null?I.baseline.toFixed(2):"—"}</b></div>
+        <div>Ratio<b>${I&&I.ratio!=null?I.ratio.toFixed(2):"—"}</b></div>
+      </div>
+      <div class="why">${whyText(f,I,V)}</div>
+    </div>`;
+  });
+  document.getElementById("read").innerHTML=html||`<p class="note">No players to show.</p>`;
+}
+
 /* ---------- Sheet URL ---------- */
 function sheetCsvUrl(input,tab){
   input=input.trim();
@@ -310,6 +394,7 @@ async function loadAll(){
   renderSummary(athletes,sessions,joined);
   renderWarn(unmatchedPlayers,noData);
   renderPreview(joined);
+  renderRead(joined);
   renderEngine(joined);
   $("results").classList.remove("hide");
 }
