@@ -88,11 +88,14 @@
   /* print */
   #printArea{display:none}
   @media print{
+    *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+    html,body{background:#ecebe6!important}
     body *{visibility:hidden}
     #printArea,#printArea *{visibility:visible}
-    #printArea{display:block;position:absolute;left:0;top:0;width:100%}
-    .athlete-page{page-break-after:always;padding:24px 8px}
+    #printArea{display:block;position:absolute;left:0;top:0;width:100%;background:#ecebe6}
+    .athlete-page{page-break-after:always;padding:24px 20px;background:#ecebe6}
     .athlete-page:last-child{page-break-after:auto}
+    .chart,.scroll table,.pill{background:#fff}
     .pb,.chart,.scroll,.notes-list>li{break-inside:avoid;page-break-inside:avoid}
     .scroll{max-height:none!important;overflow:visible!important}
   }
@@ -353,7 +356,7 @@ function sparkline(vals,flagColor,opts={}){
   if(useBand){const yT=sy(m+s),yB=sy(m-s);bandSvg=`<rect x="0" y="${yT.toFixed(1)}" width="${w}" height="${(yB-yT).toFixed(1)}" fill="#e6f1fb"/><line x1="0" y1="${sy(m).toFixed(1)}" x2="${w}" y2="${sy(m).toFixed(1)}" stroke="#9a968f" stroke-width="1" stroke-dasharray="3 3"/>`;}
   const path=clean.map((v,i)=>(i?"L":"M")+sx(i).toFixed(1)+" "+sy(v).toFixed(1)).join(" ");
   let dots="";clean.forEach((v,i)=>{const last=i===clean.length-1;let c="#141414";if(last)c=flagColor;else if(useBand)c=(v>=m-s&&v<=m+s)?"#199e70":"#eda100";dots+=`<circle cx="${sx(i).toFixed(1)}" cy="${sy(v).toFixed(1)}" r="${last?3.5:2.5}" fill="${c}"/>`;});
-  return `<div class="spark"><svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="max-width:100%">${bandSvg}<path d="${path}" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round"/>${dots}</svg></div>`;
+  return `<div class="spark"><svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h}px;display:block">${bandSvg}<path d="${path}" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>${dots}</svg></div>`;
 }
 const FLAG_COLOR={green:"#2f7d47",amber:"#b7791f",red:"#a02c2c",grey:"#9a968f"};
 function renderRead(joined){
