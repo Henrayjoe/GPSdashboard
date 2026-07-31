@@ -93,7 +93,10 @@
     #printArea{display:block;position:absolute;left:0;top:0;width:100%}
     .athlete-page{page-break-after:always;padding:24px 8px}
     .athlete-page:last-child{page-break-after:auto}
+    .pb,.chart,.scroll,.notes-list>li{break-inside:avoid;page-break-inside:avoid}
+    .scroll{max-height:none!important;overflow:visible!important}
   }
+  .pb{break-inside:avoid}
   .athlete-page h2{color:var(--ink);text-transform:none;letter-spacing:0;font-size:20px}
   .pp-charts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
   .err{color:var(--bad);font-size:13px;margin-top:6px;min-height:0}
@@ -484,14 +487,14 @@ function bestOf(matches,g){let bv=-Infinity;matches.forEach(x=>{const v=g(x);if(
 function availabilityStrip(matches){
   const flags=perMatchFlags(matches);
   const sq=matches.map((x,i)=>{const c=FLAGHEX[flags[i]];const day=(x.date||"").slice(5);return `<div title="${x.date}" style="width:26px;height:26px;border-radius:5px;background:${c}22;border:1.5px solid ${c};display:flex;align-items:center;justify-content:center;font-size:8.5px;color:var(--muted)">${day}</div>`;}).join("");
-  return `<div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:16px 0 6px">Availability — every match</div>
+  return `<div class="pb"><div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:16px 0 6px">Availability — every match</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">${sq}</div>
     <div style="display:flex;gap:14px;margin-top:8px;font-size:11px;color:var(--muted)">
       <span style="display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#2f7d47"></span>in range</span>
       <span style="display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#b7791f"></span>watch</span>
       <span style="display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#a02c2c"></span>spike</span>
       <span style="display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#9a968f"></span>building</span>
-    </div>`;
+    </div></div>`;
 }
 function progressBars(matches){
   const latest=matches[matches.length-1]||{};
@@ -523,7 +526,7 @@ function maxSpeedBlock(matches){
   let bi=-1,bv=-Infinity;matches.forEach((x,i)=>{if(x.max_velocity!=null&&x.max_velocity>bv){bv=x.max_velocity;bi=i;}});
   if(bi<0)return "";
   const kmh=bv, ms=bv/3.6;
-  return `<div style="border:1px solid var(--line);background:#fff;padding:14px 16px;margin:16px 0;display:flex;align-items:baseline;justify-content:space-between;gap:14px">
+  return `<div class="pb" style="border:1px solid var(--line);background:#fff;padding:14px 16px;margin:16px 0;display:flex;align-items:baseline;justify-content:space-between;gap:14px">
     <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Top speed recorded this season</div>
     <div style="margin-top:3px"><span style="font-size:26px;font-weight:600">${kmh.toFixed(1)} km/h</span> <span style="font-size:15px;color:var(--muted)">(${ms.toFixed(2)} m/s)</span></div></div>
     <div style="font-size:12px;color:var(--muted);white-space:nowrap">recorded ${matches[bi].date}</div>
@@ -545,12 +548,12 @@ function seasonBlock(matches){
     <div class="metric">HSR/min trend<b style="font-size:14px;color:${tcol}">${s.trend.arrow} ${s.trend.label}</b></div>
   </div>`;
   const strip=availabilityStrip(matches);
-  const visuals=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:16px 0 4px;align-items:start">
+  const visuals=`<div class="pb" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:16px 0 4px;align-items:start">
     <div>${radarSvg(matches)}</div><div>${progressBars(matches)}</div></div>`;
   const pb=(lab,o,unit,d=0)=>o?`<span class="pill"><b style="font-weight:600">${lab}:</b> ${Number(o.v).toFixed(d)}${unit||""} <em style="color:var(--muted)">(${o.date})</em></span>`:"";
-  const pbs=`<div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:16px 0 5px">Personal bests</div><div style="margin-top:2px">${pb("HSR/min",s.pbs.hsrmin,"/min",2)}${pb("Sprint distance",s.pbs.sprint,"m")}${pb("Top-speed exposure",s.pbs.maxvel,"%")}${pb("Total distance",s.pbs.dist,"m")}</div>`;
+  const pbs=`<div class="pb"><div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:16px 0 5px">Personal bests</div><div style="margin-top:2px">${pb("HSR/min",s.pbs.hsrmin,"/min",2)}${pb("Sprint distance",s.pbs.sprint,"m")}${pb("Top-speed exposure",s.pbs.maxvel,"%")}${pb("Total distance",s.pbs.dist,"m")}</div></div>`;
   const rows=matches.slice().reverse().map(x=>`<tr><td>${x.date}</td><td>${x.total_duration_min!=null?x.total_duration_min:"—"}</td><td>${intensityOf(x)!=null?intensityOf(x).toFixed(2):"—"}</td></tr>`).join("");
-  const log=`<div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:14px 0 4px">Match log</div><div class="scroll" style="max-height:200px"><table><tr><th>Date</th><th>Min</th><th>HSR/min</th></tr>${rows}</table></div>`;
+  const log=`<div class="pb"><div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:14px 0 4px">Match log</div><div class="scroll" style="max-height:200px"><table><tr><th>Date</th><th>Min</th><th>HSR/min</th></tr>${rows}</table></div></div>`;
   return chips+narr+metrics+maxSpeedBlock(matches)+strip+visuals+pbs+log;
 }
 function labeledChart(label,vals,unit,color,dates,meaning,yunit){
