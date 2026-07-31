@@ -457,6 +457,57 @@ function seasonNarrative(x){
 }
 function statusChip(lab,st){const col={green:"--ok",amber:"--warn",grey:"--muted"}[st.c];
   return `<div style="border:1px solid var(${col});padding:8px 11px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">${lab}</div><div style="font-size:13px;font-weight:600;color:var(${col});margin-top:2px">${st.t}</div></div>`;}
+const FLAGHEX={green:"#2f7d47",amber:"#b7791f",red:"#a02c2c",grey:"#9a968f"};
+function perMatchFlags(matches){
+  const vals=matches.map(intensityOf),flags=[];
+  for(let i=0;i<matches.length;i++){
+    const pr=[];for(let j=i-1;j>=0&&pr.length<5;j--){if(vals[j]!=null)pr.push(vals[j]);}
+    const v=vals[i];
+    if(v==null||pr.length<4){flags.push("grey");continue;}
+    const m=mean(pr),s=sd(pr),z=(s&&s>0)?(v-m)/s:0,a=Math.abs(z);
+    flags.push(a>2?"red":a>1?"amber":"green");
+  }
+  return flags;
+}
+function bestOf(matches,g){let bv=-Infinity;matches.forEach(x=>{const v=g(x);if(v!=null&&v>bv)bv=v;});return bv===-Infinity?null:bv;}
+function availabilityStrip(matches){
+  const flags=perMatchFlags(matches);
+  const sq=matches.map((x,i)=>{const c=FLAGHEX[flags[i]];const day=(x.date||"").slice(5);return `<div title="${x.date}" style="width:26px;height:26px;border-radius:5px;background:${c}22;border:1.5px solid ${c};display:flex;align-items:center;justify-content:center;font-size:8.5px;color:var(--muted)">${day}</div>`;}).join("");
+  return `<div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:16px 0 6px">Availability — every match</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${sq}</div>
+    <div style="display:flex;gap:14px;margin-top:8px;font-size:11px;color:var(--muted)">
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#2f7d47"></span>in range</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#b7791f"></span>watch</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#a02c2c"></span>spike</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#9a968f"></span>building</span>
+    </div>`;
+}
+function progressBars(matches){
+  const latest=matches[matches.length-1]||{};
+  const rows=[
+    ["HSR / min",intensityOf(latest),bestOf(matches,intensityOf),"/min",2],
+    ["Sprint distance",latest.sprint_distance,bestOf(matches,x=>x.sprint_distance)," m",0],
+    ["Top-speed %",latest.max_vel_pct,bestOf(matches,x=>x.max_vel_pct),"%",0],
+    ["Total distance",latest.total_distance,bestOf(matches,x=>x.total_distance)," m",0],
+  ].filter(r=>r[1]!=null&&r[2]!=null);
+  const bars=rows.map(r=>{const p=Math.max(0,Math.min(100,Math.round(r[1]/r[2]*100)));
+    return `<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>${r[0]}</span><span style="color:var(--muted)"><b style="color:var(--ink);font-weight:600">${Number(r[1]).toFixed(r[4])}${r[3]}</b> / ${Number(r[2]).toFixed(r[4])}${r[3]}</span></div><div style="height:8px;border-radius:4px;background:#efece6;overflow:hidden"><div style="height:8px;border-radius:4px;background:#185FA5;width:${p}%"></div></div></div>`;}).join("");
+  return `<div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px">How close to your best</div>${bars||'<span class="note">No data yet.</span>'}`;
+}
+function radarSvg(matches){
+  const latest=matches[matches.length-1]||{};
+  const defs=[["HSR/min",intensityOf(latest),bestOf(matches,intensityOf)],["Sprint",latest.sprint_distance,bestOf(matches,x=>x.sprint_distance)],["Top speed",latest.max_vel_pct,bestOf(matches,x=>x.max_vel_pct)],["Distance",latest.total_distance,bestOf(matches,x=>x.total_distance)],["Accel/dec",latest.accel_decel_count,bestOf(matches,x=>x.accel_decel_count)]];
+  const N=defs.length,cx=140,cy=140,R=92;
+  const pt=(i,r)=>{const a=-Math.PI/2+i*2*Math.PI/N;return [cx+r*Math.cos(a),cy+r*Math.sin(a)];};
+  let grid="";[0.25,0.5,0.75,1].forEach(f=>{grid+=`<polygon points="${defs.map((_,i)=>pt(i,R*f).map(n=>n.toFixed(1)).join(",")).join(" ")}" fill="none" stroke="#e1e0d9" stroke-width="1"/>`;});
+  let spokes="",labels="";defs.forEach((d,i)=>{const[x,y]=pt(i,R);spokes+=`<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#e1e0d9" stroke-width="1"/>`;const[lx,ly]=pt(i,R+15);labels+=`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" font-size="10" fill="#6b6864" text-anchor="middle" dominant-baseline="middle">${d[0]}</text>`;});
+  const bestPoly=defs.map((_,i)=>pt(i,R).map(n=>n.toFixed(1)).join(",")).join(" ");
+  const lastPoly=defs.map((d,i)=>{const p=(d[1]!=null&&d[2]&&d[2]>0)?Math.max(0,Math.min(1,d[1]/d[2])):0;return pt(i,R*p).map(n=>n.toFixed(1)).join(",");}).join(" ");
+  return `<div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:2px">Profile · last match vs season best</div>
+    <svg viewBox="0 0 280 285" width="100%" style="max-width:300px" role="img" aria-label="Physical profile radar, last match versus season best">
+    <polygon points="${bestPoly}" fill="none" stroke="#85b7eb" stroke-width="1.5" stroke-dasharray="4 3"/>${grid}${spokes}
+    <polygon points="${lastPoly}" fill="#185FA522" stroke="#185FA5" stroke-width="2"/>${labels}</svg>`;
+}
 function seasonBlock(matches){
   const s=seasonInsights(matches);
   const tcol={up:"#2f7d47",flat:"#6b6864",down:"#b7791f",grey:"#9a968f"}[s.trend.dir];
@@ -472,11 +523,14 @@ function seasonBlock(matches){
     <div class="metric">Near top speed<b style="font-size:16px">${s.mvN?`${s.topExp}/${s.mvN} games`:"—"}</b></div>
     <div class="metric">HSR/min trend<b style="font-size:14px;color:${tcol}">${s.trend.arrow} ${s.trend.label}</b></div>
   </div>`;
+  const strip=availabilityStrip(matches);
+  const visuals=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:16px 0 4px;align-items:start">
+    <div>${radarSvg(matches)}</div><div>${progressBars(matches)}</div></div>`;
   const pb=(lab,o,unit,d=0)=>o?`<span class="pill"><b style="font-weight:600">${lab}:</b> ${Number(o.v).toFixed(d)}${unit||""} <em style="color:var(--muted)">(${o.date})</em></span>`:"";
-  const pbs=`<div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:5px">Personal bests</div><div style="margin-top:2px">${pb("HSR/min",s.pbs.hsrmin,"/min",2)}${pb("Sprint distance",s.pbs.sprint,"m")}${pb("Top-speed exposure",s.pbs.maxvel,"%")}${pb("Total distance",s.pbs.dist,"m")}</div>`;
+  const pbs=`<div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:16px 0 5px">Personal bests</div><div style="margin-top:2px">${pb("HSR/min",s.pbs.hsrmin,"/min",2)}${pb("Sprint distance",s.pbs.sprint,"m")}${pb("Top-speed exposure",s.pbs.maxvel,"%")}${pb("Total distance",s.pbs.dist,"m")}</div>`;
   const rows=matches.slice().reverse().map(x=>`<tr><td>${x.date}</td><td>${x.total_duration_min!=null?x.total_duration_min:"—"}</td><td>${intensityOf(x)!=null?intensityOf(x).toFixed(2):"—"}</td></tr>`).join("");
   const log=`<div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:14px 0 4px">Match log</div><div class="scroll" style="max-height:200px"><table><tr><th>Date</th><th>Min</th><th>HSR/min</th></tr>${rows}</table></div>`;
-  return chips+narr+metrics+pbs+log;
+  return chips+narr+metrics+strip+visuals+pbs+log;
 }
 function labeledChart(label,vals,unit,color){
   const clean=vals.filter(v=>v!=null);
