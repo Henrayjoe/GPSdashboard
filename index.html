@@ -508,6 +508,16 @@ function radarSvg(matches){
     <polygon points="${bestPoly}" fill="none" stroke="#85b7eb" stroke-width="1.5" stroke-dasharray="4 3"/>${grid}${spokes}
     <polygon points="${lastPoly}" fill="#185FA522" stroke="#185FA5" stroke-width="2"/>${labels}</svg>`;
 }
+function maxSpeedBlock(matches){
+  let bi=-1,bv=-Infinity;matches.forEach((x,i)=>{if(x.max_velocity!=null&&x.max_velocity>bv){bv=x.max_velocity;bi=i;}});
+  if(bi<0)return "";
+  const kmh=bv*3.6;
+  return `<div style="border:1px solid var(--line);background:#fff;padding:14px 16px;margin:16px 0;display:flex;align-items:baseline;justify-content:space-between;gap:14px">
+    <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Top speed recorded this season</div>
+    <div style="margin-top:3px"><span style="font-size:26px;font-weight:600">${kmh.toFixed(1)} km/h</span> <span style="font-size:15px;color:var(--muted)">(${bv.toFixed(2)} m/s)</span></div></div>
+    <div style="font-size:12px;color:var(--muted);white-space:nowrap">recorded ${matches[bi].date}</div>
+  </div>`;
+}
 function seasonBlock(matches){
   const s=seasonInsights(matches);
   const tcol={up:"#2f7d47",flat:"#6b6864",down:"#b7791f",grey:"#9a968f"}[s.trend.dir];
@@ -530,7 +540,7 @@ function seasonBlock(matches){
   const pbs=`<div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:16px 0 5px">Personal bests</div><div style="margin-top:2px">${pb("HSR/min",s.pbs.hsrmin,"/min",2)}${pb("Sprint distance",s.pbs.sprint,"m")}${pb("Top-speed exposure",s.pbs.maxvel,"%")}${pb("Total distance",s.pbs.dist,"m")}</div>`;
   const rows=matches.slice().reverse().map(x=>`<tr><td>${x.date}</td><td>${x.total_duration_min!=null?x.total_duration_min:"—"}</td><td>${intensityOf(x)!=null?intensityOf(x).toFixed(2):"—"}</td></tr>`).join("");
   const log=`<div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:14px 0 4px">Match log</div><div class="scroll" style="max-height:200px"><table><tr><th>Date</th><th>Min</th><th>HSR/min</th></tr>${rows}</table></div>`;
-  return chips+narr+metrics+strip+visuals+pbs+log;
+  return chips+narr+metrics+maxSpeedBlock(matches)+strip+visuals+pbs+log;
 }
 function labeledChart(label,vals,unit,color){
   const clean=vals.filter(v=>v!=null);
