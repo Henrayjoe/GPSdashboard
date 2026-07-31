@@ -429,21 +429,54 @@ function seasonSummary(matches){
   return {matches:m.length,avgMin,minLo,minHi,trend,
     pbs:{hsrmin:best(intensityOf),sprint:best(x=>x.sprint_distance),maxvel:best(x=>x.max_vel_pct),dist:best(x=>x.total_distance)}};
 }
-function seasonBlock(matches){
+function cv(a){const m=mean(a);return (m&&a.length>1)?sd(a)/m:null;}
+function matchZseries(series){const out=[];for(let i=0;i<series.length;i++){const pr=series.slice(Math.max(0,i-5),i);if(pr.length>=4){const m=mean(pr),s=sd(pr);out.push((s&&s>0)?(series[i]-m)/s:null);}else out.push(null);}return out;}
+function cap(s){return s.charAt(0).toUpperCase()+s.slice(1);}
+function seasonInsights(matches){
   const s=seasonSummary(matches);
+  const intens=matches.map(intensityOf).filter(v=>v!=null);
+  const spikes=matchZseries(intens).filter(z=>z!=null&&Math.abs(z)>2).length;
+  const totalMin=matches.map(x=>x.total_duration_min).filter(v=>v!=null).reduce((a,b)=>a+b,0);
+  const mv=matches.map(x=>x.max_vel_pct).filter(v=>v!=null);
+  const topExp=mv.filter(v=>v>=90).length, mvN=mv.length;
+  const con=cv(intens);
+  const st={
+    avail: spikes<=1?{c:"green",t:spikes===0?"Well managed":"Well managed"}:{c:"amber",t:`${spikes} spikes`},
+    intensity: s.trend.dir==="up"?{c:"green",t:"Climbing"}:s.trend.dir==="down"?{c:"amber",t:"Declining"}:s.trend.dir==="flat"?{c:"green",t:"Holding"}:{c:"grey",t:"Building"},
+    explosive: mvN?(topExp/mvN>=0.5?{c:"green",t:"Near max often"}:{c:"amber",t:"Rarely near max"}):{c:"grey",t:"No data"},
+    consistency: con==null?{c:"grey",t:"Building"}:con<=0.12?{c:"green",t:"Very consistent"}:con<=0.2?{c:"green",t:"Consistent"}:{c:"amber",t:"Variable"}
+  };
+  return {...s,spikes,totalMin,topExp,mvN,con,st};
+}
+function seasonNarrative(x){
+  if(x.matches<4) return `Early days — ${x.matches} match${x.matches===1?"":"es"} logged. The season picture fills in as more games come through.`;
+  const avail=x.spikes===0?"no load spikes":`${x.spikes} load spike${x.spikes===1?"":"s"} caught and managed`;
+  const intTxt=x.trend.dir==="up"?"your high-speed running has climbed across the season":x.trend.dir==="down"?"your high-speed running has eased off in the latter part":"you've held your high-speed running steady";
+  const expTxt=x.mvN?(x.topExp/x.mvN>=0.5?`, and you've been near top speed in ${x.topExp} of ${x.mvN} games`:`, though top-speed exposure has been limited (${x.topExp} of ${x.mvN} games near max)`):"";
+  return `${x.matches} matches and ${Math.round(x.totalMin)} minutes on the pitch with ${avail}. ${cap(intTxt)}${expTxt}.`;
+}
+function statusChip(lab,st){const col={green:"--ok",amber:"--warn",grey:"--muted"}[st.c];
+  return `<div style="border:1px solid var(${col});padding:8px 11px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">${lab}</div><div style="font-size:13px;font-weight:600;color:var(${col});margin-top:2px">${st.t}</div></div>`;}
+function seasonBlock(matches){
+  const s=seasonInsights(matches);
   const tcol={up:"#2f7d47",flat:"#6b6864",down:"#b7791f",grey:"#9a968f"}[s.trend.dir];
-  const minTxt=s.avgMin==null?"—":`${Math.round(s.avgMin)} min avg${s.minLo!=null&&s.minLo!==s.minHi?` (${s.minLo}–${s.minHi})`:""}`;
-  const metrics=`<div style="display:flex;gap:22px;flex-wrap:wrap;margin:8px 0 12px">
-    <div class="metric">Matches played<b>${s.matches}</b></div>
+  const minTxt=s.avgMin==null?"—":`${Math.round(s.avgMin)} avg${s.minLo!=null&&s.minLo!==s.minHi?` (${s.minLo}–${s.minHi})`:""}`;
+  const chips=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:6px 0 12px">
+    ${statusChip("Availability",s.st.avail)}${statusChip("Intensity",s.st.intensity)}${statusChip("Explosiveness",s.st.explosive)}${statusChip("Consistency",s.st.consistency)}</div>`;
+  const narr=`<div style="font-size:13.5px;line-height:1.5;border-left:3px solid var(--ink);padding:2px 0 2px 12px;margin:0 0 14px">${seasonNarrative(s)}</div>`;
+  const metrics=`<div style="display:flex;gap:22px;flex-wrap:wrap;margin:0 0 14px">
+    <div class="metric">Matches<b>${s.matches}</b></div>
+    <div class="metric">Total minutes<b>${Math.round(s.totalMin)}</b></div>
     <div class="metric">Minutes / match<b style="font-size:16px">${minTxt}</b></div>
-    <div class="metric">HSR/min trend<b style="font-size:15px;color:${tcol}">${s.trend.arrow} ${s.trend.label}</b></div>
+    <div class="metric">Load spikes<b>${s.spikes}</b></div>
+    <div class="metric">Near top speed<b style="font-size:16px">${s.mvN?`${s.topExp}/${s.mvN} games`:"—"}</b></div>
+    <div class="metric">HSR/min trend<b style="font-size:14px;color:${tcol}">${s.trend.arrow} ${s.trend.label}</b></div>
   </div>`;
-  const pb=(lab,o,unit,d=0)=>o?`<span class="pill" style="border-color:${'#d8d4cd'}"><b style="font-weight:600">${lab}:</b> ${Number(o.v).toFixed(d)}${unit||""} <em style="color:var(--muted)">(${o.date})</em></span>`:"";
-  const pbs=`<div style="margin-top:2px">${pb("HSR/min",s.pbs.hsrmin,"/min",2)}${pb("Sprint distance",s.pbs.sprint,"m")}${pb("Top-speed exposure",s.pbs.maxvel,"%")}${pb("Total distance",s.pbs.dist,"m")}</div>`;
+  const pb=(lab,o,unit,d=0)=>o?`<span class="pill"><b style="font-weight:600">${lab}:</b> ${Number(o.v).toFixed(d)}${unit||""} <em style="color:var(--muted)">(${o.date})</em></span>`:"";
+  const pbs=`<div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:5px">Personal bests</div><div style="margin-top:2px">${pb("HSR/min",s.pbs.hsrmin,"/min",2)}${pb("Sprint distance",s.pbs.sprint,"m")}${pb("Top-speed exposure",s.pbs.maxvel,"%")}${pb("Total distance",s.pbs.dist,"m")}</div>`;
   const rows=matches.slice().reverse().map(x=>`<tr><td>${x.date}</td><td>${x.total_duration_min!=null?x.total_duration_min:"—"}</td><td>${intensityOf(x)!=null?intensityOf(x).toFixed(2):"—"}</td></tr>`).join("");
-  const log=`<div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:14px 0 4px">Match log</div>
-    <div class="scroll" style="max-height:200px"><table><tr><th>Date</th><th>Min</th><th>HSR/min</th></tr>${rows}</table></div>`;
-  return metrics+`<div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:5px">Personal bests</div>`+pbs+log;
+  const log=`<div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:14px 0 4px">Match log</div><div class="scroll" style="max-height:200px"><table><tr><th>Date</th><th>Min</th><th>HSR/min</th></tr>${rows}</table></div>`;
+  return chips+narr+metrics+pbs+log;
 }
 function labeledChart(label,vals,unit,color){
   const clean=vals.filter(v=>v!=null);
