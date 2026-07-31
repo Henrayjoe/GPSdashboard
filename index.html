@@ -179,16 +179,16 @@
         <h2>The read (Bucket 3)</h2>
         <button class="secondary" id="exportAll" style="font-size:12px;padding:7px 12px">Export all as PDF</button>
       </div>
-      <p class="h2note">One card per player, sorted most-concerning first. Flag is driven by intensity (HSR/min) vs their own 4-match norm. Trend line shows their match HSR/min over the season. Compared to themselves, never the squad. <b>Click a card</b> to open the full GPS profile.</p>
+      <p class="h2note">One card per player, sorted most-concerning first. Flag is a z-score — how many standard deviations this match sits from the player's own norm. Green within ±1 SD, amber ±1–2, red beyond ±2. The shaded band on the trend is that ±1 SD normal zone. Compared to themselves, never the squad. <b>Click a card</b> to open the full GPS profile.</p>
       <div class="read-grid" id="read"></div>
-      <p class="note">Match-only data: a red spike means "watch how you load the following training week," not an injury verdict. Grey = fewer than 3 prior matches, ratio not yet trustworthy.</p>
+      <p class="note">Match-only data: a red flag means "this is unusual for him — manage the following training week," not an injury verdict. Grey = fewer than 5 matches, the range isn't reliable yet.</p>
     </div>
 
     <div class="card">
       <h2>Load engine (Bucket 2)</h2>
-      <p class="h2note">Match-to-match, per player. <b>Int</b> = HSR per minute (intensity, minutes-adjusted). <b>Vol</b> = total HSR (volume). <b>Base</b> = rolling average of the player's last 4 matches. <b>Ratio</b> = latest match ÷ baseline (spotting a spike above their own norm). <b>Int Δ</b> = change vs previous match.</p>
+      <p class="h2note">Match-to-match, per player. <b>Int</b> = HSR per minute (intensity, minutes-adjusted). <b>Vol</b> = total HSR (volume). <b>Norm</b> = rolling average of the player's last 5 matches. <b>z</b> = standard deviations from that norm (the flag basis). <b>Ratio</b> = latest ÷ norm, shown for reference.</p>
       <div class="scroll"><table id="engine"></table></div>
-      <p class="note">Bucket 2 is the maths only — no colour flags yet. A player needs 3+ prior matches before the ratio is trustworthy (flagged "building baseline"). Sanity-check the numbers, then Bucket 3 turns this into the green/amber/red read.</p>
+      <p class="note">A player needs 5+ matches before the z-score is reliable (flagged "building baseline"). This is the raw maths behind the colour flags in the read above.</p>
     </div>
   </div>
 
@@ -260,6 +260,7 @@ function renderCols(el,fields,mapping,unmatched){
 /* ---------- Load engine (match-to-match) ---------- */
 function parseDate(s){const d=new Date(s);return isNaN(d)?null:d;}
 function mean(a){return a.length?a.reduce((x,y)=>x+y,0)/a.length:null;}
+function sd(a){if(a.length<2)return null;const m=mean(a);return Math.sqrt(a.map(v=>(v-m)**2).reduce((x,y)=>x+y,0)/a.length);}
 function intensityOf(m){ // HSR per minute
   if(m.hsr_per_min!=null)return m.hsr_per_min;
   if(m.hsr_19_8!=null&&m.total_duration_min)return m.hsr_19_8/m.total_duration_min;
@@ -269,12 +270,15 @@ function seriesStats(series){ // chronological array of numbers/nulls
   const clean=series.filter(v=>v!=null);
   if(!clean.length)return null;
   const latest=clean[clean.length-1];
-  const priors=clean.slice(Math.max(0,clean.length-5),clean.length-1); // up to last 4 matches
+  const priors=clean.slice(Math.max(0,clean.length-6),clean.length-1); // up to last 5 matches
   const baseline=priors.length?mean(priors):null;
+  const s=priors.length>=2?sd(priors):null;
   const ratio=baseline?latest/baseline:null;
+  let z=(s&&s>0)?(latest-baseline)/s:null; // standard deviations from his own norm
+  if(z!=null)z=Math.max(-6,Math.min(6,z)); // clamp to keep readouts sane on very tight histories
   const prev=clean.length>=2?clean[clean.length-2]:null;
   const m2m=prev?(latest-prev)/prev:null;
-  return {latest,baseline,ratio,m2m,nPrior:priors.length,nMatches:clean.length};
+  return {latest,baseline,sd:s,z,ratio,m2m,nPrior:priors.length,nMatches:clean.length};
 }
 function computePlayer(sessions){
   const m=sessions.filter(s=>parseDate(s.date)).sort((a,b)=>parseDate(a.date)-parseDate(b.date));
@@ -291,15 +295,16 @@ function fmt(n,d=0){return n==null?"—":Number(n).toFixed(d);}
 function pct(n){return n==null?"—":(n>=0?"+":"")+(n*100).toFixed(0)+"%";}
 function renderEngine(joined){
   const res=runEngine(joined);
-  const cols=["Player","Matches","Last match","Int last","Int base","Int ratio","Int Δ","Vol last","Vol base","Vol ratio","Note"];
+  const sdf=z=>z==null?"—":(z>0?"+":"")+z.toFixed(1);
+  const cols=["Player","Matches","Last match","Int last","Int norm","Int z","Int ratio","Vol last","Vol norm","Vol z","Note"];
   let html="<tr>"+cols.map(c=>`<th>${c}</th>`).join("")+"</tr>";
   res.forEach(r=>{
     const s=r.stats||{},I=s.intensity||{},V=s.volume||{};
-    const note = (I.nPrior!=null&&I.nPrior<3) ? "building baseline" : "";
+    const note = (I.nPrior!=null&&I.nPrior<4) ? "building baseline" : "";
     html+="<tr>"+[
       r.player, s.matches||0, s.lastDate||"—",
-      fmt(I.latest,2), fmt(I.baseline,2), I.ratio==null?"—":fmt(I.ratio,2), pct(I.m2m),
-      fmt(V.latest), fmt(V.baseline), V.ratio==null?"—":fmt(V.ratio,2), note
+      fmt(I.latest,2), fmt(I.baseline,2), sdf(I.z), I.ratio==null?"—":fmt(I.ratio,2),
+      fmt(V.latest), fmt(V.baseline), sdf(V.z), note
     ].map(v=>`<td>${v}</td>`).join("")+"</tr>";
   });
   document.getElementById("engine").innerHTML=html;
@@ -307,36 +312,40 @@ function renderEngine(joined){
 
 /* ---------- The read (Bucket 3) ---------- */
 function flagFor(I){
-  if(!I||I.ratio==null||I.nPrior<3) return {level:"grey",label:"Building baseline",rank:0};
-  const r=I.ratio;
-  if(r>=1.5)            return {level:"red",  label:"Spike",      rank:4};
-  if(r>1.3)             return {level:"amber",label:"Above norm", rank:3};
-  if(r<0.8)             return {level:"amber",label:"Below norm", rank:2};
-  return                        {level:"green",label:"In range",  rank:1};
+  if(!I||I.z==null||I.nPrior<4) return {level:"grey",label:"Building baseline",rank:0};
+  const z=I.z, a=Math.abs(z);
+  if(a>2)  return {level:"red",  label:"Spike",                    rank:4};
+  if(a>1)  return {level:"amber",label:z>0?"Above norm":"Below norm", rank:z>0?3:2};
+  return          {level:"green",label:"In range",                rank:1};
 }
 function whyText(f,I,V){
-  if(f.level==="grey") return `Only ${I&&I.nMatches?I.nMatches:0} match(es) logged — needs 3+ to read a trend.`;
+  if(f.level==="grey") return `Only ${I&&I.nMatches?I.nMatches:0} match(es) logged — needs 5+ to read a reliable range.`;
+  const a=Math.abs(I.z).toFixed(1), dir=I.z>0?"above":"below";
   const rp=Math.round((I.ratio-1)*100);
-  const vp=V&&V.ratio!=null?Math.round((V.ratio-1)*100):null;
-  const vtail = vp!=null ? ` Volume (total HSR) ${vp>=0?"+":""}${vp}% vs norm.` : "";
-  if(f.level==="red")   return `Latest match HSR/min was +${rp}% above their 4-match norm — a sharp spike. Watch how you load the following training week.${vtail}`;
-  if(f.label==="Above norm") return `HSR/min +${rp}% above their match norm — elevated but not extreme. Keep an eye on the next training week.${vtail}`;
-  if(f.label==="Below norm") return `HSR/min ${rp}% below their match norm — check minutes played, role, or freshness before reading it as fatigue.${vtail}`;
-  return `HSR/min in line with their match norm (${rp>=0?"+":""}${rp}%). Nothing flagged.${vtail}`;
+  const vp=V&&V.z!=null?V.z.toFixed(1):null;
+  const vtail = vp!=null ? ` Volume (total HSR) ${vp>=0?"+":""}${vp} SD.` : "";
+  if(f.level==="red")   return `Latest match HSR/min was ${a} SD ${dir} his own norm (${rp>=0?"+":""}${rp}%) — well outside his normal range. Manage load in the following training week.${vtail}`;
+  if(f.label==="Above norm") return `HSR/min ${a} SD above his norm (+${rp}%) — elevated but within reason. Keep an eye on the next training week.${vtail}`;
+  if(f.label==="Below norm") return `HSR/min ${a} SD below his norm (${rp}%) — check minutes played, role, or freshness before reading it as fatigue.${vtail}`;
+  return `HSR/min sits inside his normal range (${a} SD, ${rp>=0?"+":""}${rp}%). Nothing flagged.${vtail}`;
 }
-function sparkline(vals,flagColor){
+function sparkline(vals,flagColor,opts={}){
   const clean=vals.filter(v=>v!=null);
-  const w=250,h=46;
+  const w=opts.w||250,h=opts.h||46,band=opts.band!==false;
   if(clean.length<2) return `<div class="spark" style="font-size:12px;color:var(--muted)">Not enough matches to plot</div>`;
-  const min=Math.min(...clean),max=Math.max(...clean),rng=(max-min)||1;
-  const step=w/(clean.length-1);
-  const pts=clean.map((v,i)=>[i*step,h-5-((v-min)/rng)*(h-10)]);
-  const path=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
-  const last=pts[pts.length-1];
-  return `<div class="spark"><svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="max-width:100%">
-    <path d="${path}" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round"/>
-    <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3.5" fill="${flagColor}"/>
-  </svg></div>`;
+  const priors=clean.slice(0,-1);
+  const useBand=band&&priors.length>=4;
+  const m=useBand?mean(priors):null, s=useBand?sd(priors):null;
+  let lo=Math.min(...clean), hi=Math.max(...clean);
+  if(useBand){lo=Math.min(lo,m-s);hi=Math.max(hi,m+s);}
+  const pad=((hi-lo)*0.12)||1; lo-=pad; hi+=pad;
+  const sx=i=>(i/(clean.length-1))*w;
+  const sy=v=>h-3-((v-lo)/(hi-lo))*(h-6);
+  let bandSvg="";
+  if(useBand){const yT=sy(m+s),yB=sy(m-s);bandSvg=`<rect x="0" y="${yT.toFixed(1)}" width="${w}" height="${(yB-yT).toFixed(1)}" fill="#e6f1fb"/><line x1="0" y1="${sy(m).toFixed(1)}" x2="${w}" y2="${sy(m).toFixed(1)}" stroke="#9a968f" stroke-width="1" stroke-dasharray="3 3"/>`;}
+  const path=clean.map((v,i)=>(i?"L":"M")+sx(i).toFixed(1)+" "+sy(v).toFixed(1)).join(" ");
+  let dots="";clean.forEach((v,i)=>{const last=i===clean.length-1;let c="#141414";if(last)c=flagColor;else if(useBand)c=(v>=m-s&&v<=m+s)?"#199e70":"#eda100";dots+=`<circle cx="${sx(i).toFixed(1)}" cy="${sy(v).toFixed(1)}" r="${last?3.5:2.5}" fill="${c}"/>`;});
+  return `<div class="spark"><svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="max-width:100%">${bandSvg}<path d="${path}" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round"/>${dots}</svg></div>`;
 }
 const FLAG_COLOR={green:"#2f7d47",amber:"#b7791f",red:"#a02c2c",grey:"#9a968f"};
 function renderRead(joined){
@@ -359,7 +368,7 @@ function renderRead(joined){
       <div class="knums">
         <div>HSR/min<b>${I&&I.latest!=null?I.latest.toFixed(2):"—"}</b></div>
         <div>Norm<b>${I&&I.baseline!=null?I.baseline.toFixed(2):"—"}</b></div>
-        <div>Ratio<b>${I&&I.ratio!=null?I.ratio.toFixed(2):"—"}</b></div>
+        <div>Deviation<b>${I&&I.z!=null&&I.nPrior>=4?(I.z>0?"+":"")+I.z.toFixed(1)+" SD":"—"}</b></div>
       </div>
       <div class="why">${whyText(f,I,V)}</div>
       <div class="open">Open profile →</div>
@@ -373,19 +382,28 @@ function getMatches(player){
   return window.GPS.joined.filter(j=>j.player===player&&parseDate(j.date)).sort((a,b)=>parseDate(a.date)-parseDate(b.date));
 }
 const pctChange=(a,b)=>(b==null||a==null||b===0)?null:(a-b)/b;
+// a player's typical match-to-match swing for a metric (their "normal wobble")
+function typicalSwing(getter,matches){
+  const vals=matches.map(getter),ch=[];
+  for(let i=1;i<vals.length;i++){const c=pctChange(vals[i],vals[i-1]);if(c!=null)ch.push(Math.abs(c));}
+  return ch.length?mean(ch):null;
+}
 function changeNotes(matches){
+  // noise filter: only report a change if it beats this player's own typical swing (floor keeps it sane)
+  const thr=(getter,floor)=>Math.max(floor,(typicalSwing(getter,matches)||0));
+  const tI=thr(intensityOf,0.08), tD=thr(m=>m.total_distance,0.08), tS=thr(m=>m.sprint_distance,0.10), tA=thr(m=>m.accel_decel_count,0.12);
   const out=[];
   for(let i=1;i<matches.length;i++){
     const c=matches[i],p=matches[i-1],notes=[];
     const iC=intensityOf(c),iP=intensityOf(p),ip=pctChange(iC,iP);
-    if(ip!=null&&Math.abs(ip)>=0.08)notes.push({mag:Math.abs(ip),t:`High-speed running per minute ${ip>0?"up":"down"} ${Math.abs(Math.round(ip*100))}% (${iC.toFixed(2)}/min).`});
+    if(ip!=null&&Math.abs(ip)>=tI)notes.push({mag:Math.abs(ip),t:`High-speed running per minute ${ip>0?"up":"down"} ${Math.abs(Math.round(ip*100))}% (${iC.toFixed(2)}/min).`});
     const dp=pctChange(c.total_distance,p.total_distance);
-    if(dp!=null&&Math.abs(dp)>=0.08)notes.push({mag:Math.abs(dp),t:`Total distance ${dp>0?"up":"down"} ${Math.abs(Math.round(dp*100))}%.`});
+    if(dp!=null&&Math.abs(dp)>=tD)notes.push({mag:Math.abs(dp),t:`Total distance ${dp>0?"up":"down"} ${Math.abs(Math.round(dp*100))}%.`});
     const sp=pctChange(c.sprint_distance,p.sprint_distance);
-    if(sp!=null&&Math.abs(sp)>=0.08)notes.push({mag:Math.abs(sp),t:`Sprint distance ${sp>0?"up":"down"} ${Math.abs(Math.round(sp*100))}%.`});
+    if(sp!=null&&Math.abs(sp)>=tS)notes.push({mag:Math.abs(sp),t:`Sprint distance ${sp>0?"up":"down"} ${Math.abs(Math.round(sp*100))}%.`});
     if(c.max_vel_pct!=null&&p.max_vel_pct!=null&&Math.abs(c.max_vel_pct-p.max_vel_pct)>=3)notes.push({mag:Math.abs(c.max_vel_pct-p.max_vel_pct)/100,t:`Reached ${c.max_vel_pct}% of top speed (${c.max_vel_pct>p.max_vel_pct?"up":"down"} ${Math.abs(c.max_vel_pct-p.max_vel_pct)} pts).`});
     const ap=pctChange(c.accel_decel_count,p.accel_decel_count);
-    if(ap!=null&&Math.abs(ap)>=0.10)notes.push({mag:Math.abs(ap)*0.9,t:`Accel/decel count ${ap>0?"up":"down"} ${Math.abs(Math.round(ap*100))}%.`});
+    if(ap!=null&&Math.abs(ap)>=tA)notes.push({mag:Math.abs(ap)*0.9,t:`Accel/decel count ${ap>0?"up":"down"} ${Math.abs(Math.round(ap*100))}%.`});
     if(c.total_duration_min!=null&&p.total_duration_min!=null&&Math.abs(c.total_duration_min-p.total_duration_min)>=10)notes.push({mag:0.05,t:`Played ${c.total_duration_min} min (${c.total_duration_min>p.total_duration_min?"+":""}${c.total_duration_min-p.total_duration_min} vs previous).`});
     notes.sort((a,b)=>b.mag-a.mag);
     out.push({date:c.date,prev:p.date,notes:notes.slice(0,3).map(n=>n.t)});
@@ -395,7 +413,7 @@ function changeNotes(matches){
 function labeledChart(label,vals,unit,color){
   const clean=vals.filter(v=>v!=null);
   const val=clean.length?clean[clean.length-1]:null;
-  return `<div class="chart"><div class="clab">${label}</div><div class="cval">${val==null?"—":(Math.round(val*100)/100)}${unit||""}</div>${sparkline(vals,color||"#141414")}</div>`;
+  return `<div class="chart"><div class="clab">${label}</div><div class="cval">${val==null?"—":(Math.round(val*100)/100)}${unit||""}</div>${sparkline(vals,color||"#141414",{w:340,h:120})}</div>`;
 }
 function notesHtml(matches){
   const cn=changeNotes(matches);
