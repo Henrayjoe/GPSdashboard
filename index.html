@@ -511,10 +511,10 @@ function radarSvg(matches){
 function maxSpeedBlock(matches){
   let bi=-1,bv=-Infinity;matches.forEach((x,i)=>{if(x.max_velocity!=null&&x.max_velocity>bv){bv=x.max_velocity;bi=i;}});
   if(bi<0)return "";
-  const kmh=bv*3.6;
+  const kmh=bv, ms=bv/3.6;
   return `<div style="border:1px solid var(--line);background:#fff;padding:14px 16px;margin:16px 0;display:flex;align-items:baseline;justify-content:space-between;gap:14px">
     <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Top speed recorded this season</div>
-    <div style="margin-top:3px"><span style="font-size:26px;font-weight:600">${kmh.toFixed(1)} km/h</span> <span style="font-size:15px;color:var(--muted)">(${bv.toFixed(2)} m/s)</span></div></div>
+    <div style="margin-top:3px"><span style="font-size:26px;font-weight:600">${kmh.toFixed(1)} km/h</span> <span style="font-size:15px;color:var(--muted)">(${ms.toFixed(2)} m/s)</span></div></div>
     <div style="font-size:12px;color:var(--muted);white-space:nowrap">recorded ${matches[bi].date}</div>
   </div>`;
 }
@@ -542,10 +542,15 @@ function seasonBlock(matches){
   const log=`<div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:14px 0 4px">Match log</div><div class="scroll" style="max-height:200px"><table><tr><th>Date</th><th>Min</th><th>HSR/min</th></tr>${rows}</table></div>`;
   return chips+narr+metrics+maxSpeedBlock(matches)+strip+visuals+pbs+log;
 }
-function labeledChart(label,vals,unit,color){
+function labeledChart(label,vals,unit,color,dates,meaning,yunit){
   const clean=vals.filter(v=>v!=null);
   const val=clean.length?clean[clean.length-1]:null;
-  return `<div class="chart"><div class="clab">${label}</div><div class="cval">${val==null?"—":(Math.round(val*100)/100)}${unit||""}</div>${sparkline(vals,color||"#141414",{w:340,h:120})}</div>`;
+  const d0=dates&&dates.length?dates[0]:"", d1=dates&&dates.length?dates[dates.length-1]:"";
+  const xrow=`<div style="display:flex;justify-content:space-between;font-size:9.5px;color:var(--muted);margin-top:3px"><span>${d0}</span><span>match date →</span><span>${d1}</span></div>`;
+  const ylab=yunit?`<div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;color:var(--muted);display:flex;align-items:center;justify-content:center">${yunit}</div>`:"";
+  const meaningEl=meaning?`<div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.35">${meaning}</div>`:"";
+  return `<div class="chart"><div class="clab">${label}</div><div class="cval">${val==null?"—":(Math.round(val*100)/100)}${unit||""}</div>
+    <div style="display:flex;gap:5px">${ylab}<div style="flex:1;min-width:0">${sparkline(vals,color||"#141414",{w:340,h:120})}${xrow}</div></div>${meaningEl}</div>`;
 }
 function notesHtml(matches){
   const cn=changeNotes(matches);
@@ -560,10 +565,10 @@ function openAthlete(player){
   const prof=m[0]||{};
   const meta=[prof.position,prof.age?prof.age+"y":null].filter(Boolean).join(" · ");
   const charts=`<div class="charts">
-    ${labeledChart("HSR / min",m.map(intensityOf),"",FLAG_COLOR[f.level])}
-    ${labeledChart("Total distance (m)",m.map(x=>x.total_distance))}
-    ${labeledChart("Sprint distance (m)",m.map(x=>x.sprint_distance))}
-    ${labeledChart("Max vel % of top",m.map(x=>x.max_vel_pct),"%")}
+    ${labeledChart("HSR / min",m.map(intensityOf),"",FLAG_COLOR[f.level],m.map(x=>x.date),"High-speed metres run per minute — how intense the match was. Shaded band is his own normal range.","m/min")}
+    ${labeledChart("Total distance (m)",m.map(x=>x.total_distance),"",null,m.map(x=>x.date),"Total metres covered in the match — overall volume.","metres")}
+    ${labeledChart("Sprint distance (m)",m.map(x=>x.sprint_distance),"",null,m.map(x=>x.date),"Metres run at sprint speed — top-end output.","metres")}
+    ${labeledChart("Max vel % of top",m.map(x=>x.max_vel_pct),"%",null,m.map(x=>x.date),"How close to his top speed he got in the match.","% of max")}
   </div>`;
   document.getElementById("modal").innerHTML=`
     <div class="mtop">
@@ -592,10 +597,10 @@ function athletePageHtml(player){
   const prof=m[0]||{};
   const meta=[prof.position,prof.age?prof.age+"y":null].filter(Boolean).join(" · ");
   const charts=`<div class="pp-charts">
-    ${labeledChart("HSR / min",m.map(intensityOf),"",FLAG_COLOR[f.level])}
-    ${labeledChart("Total distance (m)",m.map(x=>x.total_distance))}
-    ${labeledChart("Sprint distance (m)",m.map(x=>x.sprint_distance))}
-    ${labeledChart("Max vel % of top",m.map(x=>x.max_vel_pct),"%")}
+    ${labeledChart("HSR / min",m.map(intensityOf),"",FLAG_COLOR[f.level],m.map(x=>x.date),"High-speed metres run per minute — how intense the match was. Shaded band is his own normal range.","m/min")}
+    ${labeledChart("Total distance (m)",m.map(x=>x.total_distance),"",null,m.map(x=>x.date),"Total metres covered in the match — overall volume.","metres")}
+    ${labeledChart("Sprint distance (m)",m.map(x=>x.sprint_distance),"",null,m.map(x=>x.date),"Metres run at sprint speed — top-end output.","metres")}
+    ${labeledChart("Max vel % of top",m.map(x=>x.max_vel_pct),"%",null,m.map(x=>x.date),"How close to his top speed he got in the match.","% of max")}
   </div>`;
   const latest=m[m.length-1]||{};
   return `<div class="athlete-page">
