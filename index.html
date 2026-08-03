@@ -278,7 +278,14 @@ function intensityOf(m){ // HSR per minute
   if(m.hsr_19_8!=null&&m.total_duration_min)return m.hsr_19_8/m.total_duration_min;
   return null;
 }
-function sessLabel(m){return (m&&m.session_name&&(""+m.session_name).trim())?(""+m.session_name).trim():(m&&m.date?m.date:"—");}
+function sessLabel(m){
+  if(!m)return "—";
+  const n=m.session_name&&(""+m.session_name).trim();
+  if(n)return n;
+  const t=m.session_type&&(""+m.session_type).trim();
+  if(t)return t;
+  return m.date?m.date:"—";
+}
 function seriesStats(series){ // chronological array of numbers/nulls
   const clean=series.filter(v=>v!=null);
   if(!clean.length)return null;
