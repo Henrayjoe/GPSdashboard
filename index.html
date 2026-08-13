@@ -237,6 +237,7 @@ const GPS_FIELDS=[
   {key:"max_vel_pct",      label:"Max vel % max",   required:false, aliases:["maxvelpct","maxvelmax","pctmaxvel","maxvelpercent","percentmaxvelocity","maxvelofmax"], num:true},
   {key:"hr_avg",           label:"HR avg",          required:false, aliases:["hravg","avghr","averageheartrate","hrmean"], num:true},
   {key:"hr_max",           label:"HR max",          required:false, aliases:["hrmax","maxhr","maxheartrate"], num:true},
+  {key:"heart_exertion",   label:"Heart exertion",  required:false, aliases:["heartexertion","exertion","hrexertion","heartload","hrload"], num:true},
 ];
 
 window.GPS={athletes:[],sessions:[],joined:[]};
@@ -466,20 +467,33 @@ function seasonInsights(matches){
   const mv=matches.map(x=>x.max_vel_pct).filter(v=>v!=null);
   const topExp=mv.filter(v=>v>=90).length, mvN=mv.length;
   const con=cv(intens);
+  const reliable = matches.length>=5; // z-scores / consistency need history
   const st={
-    avail: spikes<=1?{c:"green",t:spikes===0?"Well managed":"Well managed"}:{c:"amber",t:`${spikes} spikes`},
-    intensity: s.trend.dir==="up"?{c:"green",t:"Climbing"}:s.trend.dir==="down"?{c:"amber",t:"Declining"}:s.trend.dir==="flat"?{c:"green",t:"Holding"}:{c:"grey",t:"Building"},
+    avail: !reliable?{c:"grey",t:"Building baseline"}:(spikes<=1?{c:"green",t:"Well managed"}:{c:"amber",t:`${spikes} spikes`}),
+    intensity: s.trend.dir==="up"?{c:"green",t:"Climbing"}:s.trend.dir==="down"?{c:"amber",t:"Declining"}:s.trend.dir==="flat"?(reliable?{c:"green",t:"Holding"}:{c:"grey",t:"Early read"}):{c:"grey",t:"Building"},
     explosive: mvN?(topExp/mvN>=0.5?{c:"green",t:"Near max often"}:{c:"amber",t:"Rarely near max"}):{c:"grey",t:"No data"},
-    consistency: con==null?{c:"grey",t:"Building"}:con<=0.12?{c:"green",t:"Very consistent"}:con<=0.2?{c:"green",t:"Consistent"}:{c:"amber",t:"Variable"}
+    consistency: !reliable?{c:"grey",t:"Building baseline"}:(con==null?{c:"grey",t:"Building"}:con<=0.12?{c:"green",t:"Very consistent"}:con<=0.2?{c:"green",t:"Consistent"}:{c:"amber",t:"Variable"})
   };
-  return {...s,spikes,totalMin,topExp,mvN,con,st};
+  return {...s,spikes,totalMin,topExp,mvN,con,reliable,st};
 }
 function seasonNarrative(x){
-  if(x.matches<4) return `Early days — ${x.matches} match${x.matches===1?"":"es"} logged. The season picture fills in as more games come through.`;
-  const avail=x.spikes===0?"no load spikes":`${x.spikes} load spike${x.spikes===1?"":"s"} caught and managed`;
-  const intTxt=x.trend.dir==="up"?"your high-speed running has climbed across the season":x.trend.dir==="down"?"your high-speed running has eased off in the latter part":"you've held your high-speed running steady";
+  if(x.matches<2) return `${x.matches} match logged — the season picture fills in as more games come through.`;
+  const intTxt=x.trend.dir==="up"?"your high-speed running has climbed across the season":x.trend.dir==="down"?"your high-speed running has eased off in the latter part":"your high-speed running has held roughly level";
   const expTxt=x.mvN?(x.topExp/x.mvN>=0.5?`, and you've been near top speed in ${x.topExp} of ${x.mvN} games`:`, though top-speed exposure has been limited (${x.topExp} of ${x.mvN} games near max)`):"";
+  if(!x.reliable) return `${x.matches} matches and ${Math.round(x.totalMin)} minutes logged so far — an early read that firms up from 5 matches on. Across them, ${intTxt}${expTxt}.`;
+  const avail=x.spikes===0?"no load spikes":`${x.spikes} load spike${x.spikes===1?"":"s"} caught and managed`;
   return `${x.matches} matches and ${Math.round(x.totalMin)} minutes on the pitch with ${avail}. ${cap(intTxt)}${expTxt}.`;
+}
+function focusNext(x,matches){
+  const bits=[],lastM=matches[matches.length-1]||{};
+  const mins=matches.map(m=>m.total_duration_min).filter(v=>v!=null);
+  const avgMin=mins.length?mean(mins):null;
+  if(lastM.total_duration_min!=null&&avgMin!=null&&lastM.total_duration_min>avgMin+15) bits.push("Last match was a heavy-minute shift — prioritise recovery before adding training load.");
+  if(x.trend.dir==="down") bits.push("High-speed output has dipped lately — check freshness and hold back the next training week if it continues.");
+  if(x.mvN&&x.topExp/x.mvN<0.5) bits.push("Add a weekly near-max sprint exposure to lift top-speed readiness.");
+  else if(x.mvN&&x.topExp/x.mvN>=0.5) bits.push("Top-speed exposure is good — keep a weekly near-max effort to hold it.");
+  if(!bits.length) bits.push("Numbers sit in a healthy range — maintain the current load rhythm.");
+  return bits.slice(0,2);
 }
 function statusChip(lab,st){const col={green:"--ok",amber:"--warn",grey:"--muted"}[st.c];
   return `<div style="border:1px solid var(${col});padding:8px 11px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">${lab}</div><div style="font-size:13px;font-weight:600;color:var(${col});margin-top:2px">${st.t}</div></div>`;}
@@ -518,7 +532,12 @@ function progressBars(matches){
   ].filter(r=>r[1]!=null&&r[2]!=null);
   const bars=rows.map(r=>{const p=Math.max(0,Math.min(100,Math.round(r[1]/r[2]*100)));
     return `<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>${r[0]}</span><span style="color:var(--muted)"><b style="color:var(--ink);font-weight:600">${Number(r[1]).toFixed(r[4])}${r[3]}</b> / ${Number(r[2]).toFixed(r[4])}${r[3]}</span></div><div style="height:8px;border-radius:4px;background:#efece6;overflow:hidden"><div style="height:8px;border-radius:4px;background:#185FA5;width:${p}%"></div></div></div>`;}).join("");
-  return `<div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px">How close to your best</div>${bars||'<span class="note">No data yet.</span>'}`;
+  const mins=matches.map(x=>x.total_duration_min).filter(v=>v!=null);
+  const avgMin=mins.length?mean(mins):null;
+  let ctx="";
+  if(latest.total_duration_min!=null&&avgMin!=null&&latest.total_duration_min>avgMin+15)
+    ctx=`<div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.4">${sessLabel(latest)} was ${latest.total_duration_min} min vs a ${Math.round(avgMin)}-min average — longer matches usually show lower per-minute output, so a dip here is expected, not a red flag.</div>`;
+  return `<div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px">How close to your best</div>${bars||'<span class="note">No data yet.</span>'}${ctx}`;
 }
 function radarSvg(matches){
   const latest=matches[matches.length-1]||{};
@@ -551,13 +570,21 @@ function seasonBlock(matches){
   const chips=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:6px 0 12px">
     ${statusChip("Availability",s.st.avail)}${statusChip("Intensity",s.st.intensity)}${statusChip("Explosiveness",s.st.explosive)}${statusChip("Consistency",s.st.consistency)}</div>`;
   const narr=`<div style="font-size:13.5px;line-height:1.5;border-left:3px solid var(--ink);padding:2px 0 2px 12px;margin:0 0 14px">${seasonNarrative(s)}</div>`;
+  const focus=focusNext(s,matches);
+  const focusEl=`<div class="pb" style="border:1px solid var(--line);background:#fff;padding:12px 14px;margin:0 0 14px">
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Focus next</div>
+    <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5">${focus.map(f=>`<li>${f}</li>`).join("")}</ul></div>`;
+  const lastM=matches[matches.length-1]||{};
+  const hrCell=lastM.hr_avg!=null?`<div class="metric">Avg HR (last)<b style="font-size:16px">${Math.round(lastM.hr_avg)} bpm</b></div>`:"";
+  const exCell=lastM.heart_exertion!=null?`<div class="metric">Heart exertion<b style="font-size:16px">${Math.round(lastM.heart_exertion)}</b></div>`:"";
   const metrics=`<div style="display:flex;gap:22px;flex-wrap:wrap;margin:0 0 14px">
     <div class="metric">Matches<b>${s.matches}</b></div>
     <div class="metric">Total minutes<b>${Math.round(s.totalMin)}</b></div>
     <div class="metric">Minutes / match<b style="font-size:16px">${minTxt}</b></div>
-    <div class="metric">Load spikes<b>${s.spikes}</b></div>
+    <div class="metric">Load spikes<b>${s.reliable?s.spikes:"n/a"}</b></div>
     <div class="metric">Near top speed<b style="font-size:16px">${s.mvN?`${s.topExp}/${s.mvN} games`:"—"}</b></div>
     <div class="metric">HSR/min trend<b style="font-size:14px;color:${tcol}">${s.trend.arrow} ${s.trend.label}</b></div>
+    ${hrCell}${exCell}
   </div>`;
   const strip=availabilityStrip(matches);
   const visuals=`<div class="pb" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:16px 0 4px;align-items:start">
@@ -566,7 +593,7 @@ function seasonBlock(matches){
   const pbs=`<div class="pb"><div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:16px 0 5px">Personal bests</div><div style="margin-top:2px">${pb("HSR/min",s.pbs.hsrmin,"/min",2)}${pb("Sprint distance",s.pbs.sprint,"m")}${pb("Top-speed exposure",s.pbs.maxvel,"%")}${pb("Total distance",s.pbs.dist,"m")}</div></div>`;
   const rows=matches.slice().reverse().map(x=>`<tr><td>${sessLabel(x)}</td><td>${x.date||"—"}</td><td>${x.total_duration_min!=null?x.total_duration_min:"—"}</td><td>${intensityOf(x)!=null?intensityOf(x).toFixed(2):"—"}</td></tr>`).join("");
   const log=`<div class="pb"><div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:14px 0 4px">Match log</div><div class="scroll" style="max-height:200px"><table><tr><th>Session</th><th>Date</th><th>Min</th><th>HSR/min</th></tr>${rows}</table></div></div>`;
-  return chips+narr+metrics+maxSpeedBlock(matches)+strip+visuals+pbs+log;
+  return chips+narr+focusEl+metrics+maxSpeedBlock(matches)+strip+visuals+pbs+log;
 }
 function labeledChart(label,vals,unit,color,dates,meaning,yunit){
   const clean=vals.filter(v=>v!=null);
@@ -595,6 +622,8 @@ function openAthlete(player){
     ${labeledChart("Total distance (m)",m.map(x=>x.total_distance),"",null,m.map(x=>x.date),"Total metres covered in the match — overall volume.","metres")}
     ${labeledChart("Sprint distance (m)",m.map(x=>x.sprint_distance),"",null,m.map(x=>x.date),"Metres run at sprint speed — top-end output.","metres")}
     ${labeledChart("Max vel % of top",m.map(x=>x.max_vel_pct),"%",null,m.map(x=>x.date),"How close to his top speed he got in the match.","% of max")}
+    ${m.some(x=>x.hr_avg!=null)?labeledChart("Avg HR (bpm)",m.map(x=>x.hr_avg),"",null,m.map(x=>x.date),"Average heart rate — internal load. The same running at a higher HR can signal fatigue.","bpm"):""}
+    ${m.some(x=>x.heart_exertion!=null)?labeledChart("Heart exertion",m.map(x=>x.heart_exertion),"",null,m.map(x=>x.date),"Total cardiovascular work in the match — internal load volume.","exertion"):""}
   </div>`;
   document.getElementById("modal").innerHTML=`
     <div class="mtop">
@@ -627,6 +656,8 @@ function athletePageHtml(player){
     ${labeledChart("Total distance (m)",m.map(x=>x.total_distance),"",null,m.map(x=>x.date),"Total metres covered in the match — overall volume.","metres")}
     ${labeledChart("Sprint distance (m)",m.map(x=>x.sprint_distance),"",null,m.map(x=>x.date),"Metres run at sprint speed — top-end output.","metres")}
     ${labeledChart("Max vel % of top",m.map(x=>x.max_vel_pct),"%",null,m.map(x=>x.date),"How close to his top speed he got in the match.","% of max")}
+    ${m.some(x=>x.hr_avg!=null)?labeledChart("Avg HR (bpm)",m.map(x=>x.hr_avg),"",null,m.map(x=>x.date),"Average heart rate — internal load. The same running at a higher HR can signal fatigue.","bpm"):""}
+    ${m.some(x=>x.heart_exertion!=null)?labeledChart("Heart exertion",m.map(x=>x.heart_exertion),"",null,m.map(x=>x.date),"Total cardiovascular work in the match — internal load volume.","exertion"):""}
   </div>`;
   const latest=m[m.length-1]||{};
   const coach=getCoach();
