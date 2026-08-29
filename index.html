@@ -754,11 +754,11 @@ async function loadAll(){
   const sessions=normalizeRows(GPS_FIELDS,gps.data,gMap.mapping).filter(r=>r.player&&r.date);
 
   // tested max speed per athlete (best value if several rows)
-  const maxMap={};
+  const maxMap={}, maxDisp={};
   if(res){
     const rMap=buildMapping(RES_FIELDS,res.fields);
     normalizeRows(RES_FIELDS,res.data,rMap.mapping).forEach(r=>{
-      if(r.name&&r.max_vel_ms!=null&&r.max_vel_ms>0){const k=norm(r.name);maxMap[k]=Math.max(maxMap[k]||0,r.max_vel_ms);}
+      if(r.name&&r.max_vel_ms!=null&&r.max_vel_ms>0){const k=norm(r.name);if(!maxMap[k]||r.max_vel_ms>maxMap[k]){maxMap[k]=r.max_vel_ms;maxDisp[k]=r.name;}}
     });
   }
 
@@ -796,7 +796,8 @@ async function loadAll(){
   if(res){$("joinWarn").innerHTML+=($("joinWarn").innerHTML?"<br>":"")+`<span style="color:var(--ok)">✓ Max Vel % of top computed from tested top speed for ${computedPct} match(es).</span>`;
     if(needTest.size)$("joinWarn").innerHTML+=`<br>⚠ Match top speed present but no tested max matched — check the name matches the Results tab exactly and that <code>max_vel_ms</code> is filled: ${[...needTest].join(", ")}`;
     const testedNames=Object.keys(maxMap);
-    if(testedNames.length)$("joinWarn").innerHTML+=`<br><span style="color:var(--muted)">Tested max loaded for: ${testedNames.length} athlete(s).</span>`;
+    if(testedNames.length)$("joinWarn").innerHTML+=`<br><span style="color:var(--muted)">Tested max loaded: ${testedNames.map(k=>`${maxDisp[k]} (${maxMap[k]} m/s)`).join(", ")}</span>`;
+    else $("joinWarn").innerHTML+=`<br>⚠ No usable <code>max_vel_ms</code> values found in the Results tab — check the column is named max_vel_ms and holds numbers.`;
   }
   renderPreview(joined);
   renderRead(joined);
