@@ -191,7 +191,8 @@
     <div class="card">
       <h2>Column check</h2>
       <div style="margin-bottom:8px"><b style="font-size:12px">Athletes</b><div id="athCols" style="margin-top:6px"></div></div>
-      <div><b style="font-size:12px">GPS</b><div id="gpsCols" style="margin-top:6px"></div></div>
+      <div style="margin-bottom:8px"><b style="font-size:12px">GPS</b><div id="gpsCols" style="margin-top:6px"></div></div>
+      <div id="resColsWrap" class="hide"><b style="font-size:12px">Results (max-speed) — <span id="resRowCount" style="color:var(--muted);font-weight:400"></span></b><div id="resCols" style="margin-top:6px"></div></div>
     </div>
 
     <div class="card">
@@ -731,8 +732,8 @@ function fetchSource(kind){
 }
 
 const RES_FIELDS=[
-  {key:"name",       label:"Name",         aliases:["name","player","athlete","playername","fullname"]},
-  {key:"max_vel_ms", label:"Max vel (m/s)",num:true, aliases:["maxvelms","maxvelocityms","maxspeedms","topspeedms","maxvel","maxvelocity","topspeed","vmax"]},
+  {key:"name",       label:"Name",         required:true, aliases:["name","player","athlete","playername","fullname"]},
+  {key:"max_vel_ms", label:"Max vel (m/s)",required:true, num:true, aliases:["maxvelms","maxvelocityms","maxspeedms","topspeedms","maxvel","maxvelocity","topspeed","vmax"]},
 ];
 
 /* ---------- Load & join ---------- */
@@ -754,9 +755,9 @@ async function loadAll(){
   const sessions=normalizeRows(GPS_FIELDS,gps.data,gMap.mapping).filter(r=>r.player&&r.date);
 
   // tested max speed per athlete (best value if several rows)
-  const maxMap={}, maxDisp={};
+  const maxMap={}, maxDisp={}; let rMap=null;
   if(res){
-    const rMap=buildMapping(RES_FIELDS,res.fields);
+    rMap=buildMapping(RES_FIELDS,res.fields);
     normalizeRows(RES_FIELDS,res.data,rMap.mapping).forEach(r=>{
       if(r.name&&r.max_vel_ms!=null&&r.max_vel_ms>0){const k=norm(r.name);if(!maxMap[k]||r.max_vel_ms>maxMap[k]){maxMap[k]=r.max_vel_ms;maxDisp[k]=r.name;}}
     });
@@ -791,6 +792,8 @@ async function loadAll(){
 
   renderCols($("athCols"),ATH_FIELDS,aMap.mapping,aMap.unmatched);
   renderCols($("gpsCols"),GPS_FIELDS,gMap.mapping,gMap.unmatched);
+  if(res&&rMap){$("resColsWrap").classList.remove("hide");$("resRowCount").textContent=res.data.length+" rows read";renderCols($("resCols"),RES_FIELDS,rMap.mapping,rMap.unmatched);}
+  else{$("resColsWrap").classList.add("hide");}
   renderSummary(athletes,sessions,joined);
   renderWarn(unmatchedPlayers,noData);
   if(res){$("joinWarn").innerHTML+=($("joinWarn").innerHTML?"<br>":"")+`<span style="color:var(--ok)">✓ Max Vel % of top computed from tested top speed for ${computedPct} match(es).</span>`;
