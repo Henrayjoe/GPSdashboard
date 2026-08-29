@@ -767,6 +767,7 @@ async function loadAll(){
   athletes.forEach(a=>{if(a.name)byName[norm(a.name)]=a;if(a.id)byId[norm(a.id)]=a;});
 
   const unmatchedPlayers=new Set();
+  const needTest=new Set(); // has a match top speed but no tested max matched
   let computedPct=0;
   const joined=sessions.map(s=>{
     let a=(s.id&&byId[norm(s.id)])||byName[norm(s.player)]||null;
@@ -774,6 +775,7 @@ async function loadAll(){
     // Max Vel % of top: compute from tested max_vel_ms if the cell is blank (match max_velocity is km/h → m/s)
     let mvp=s.max_vel_pct;
     const tested=maxMap[norm(s.player)];
+    if(s.max_vel_pct==null&&s.max_velocity!=null&&!tested)needTest.add(s.player);
     if(mvp==null&&tested&&s.max_velocity!=null){mvp=Math.round((s.max_velocity/3.6)/tested*1000)/10;computedPct++;}
     return Object.assign({},s,{
       max_vel_pct:mvp,
@@ -791,7 +793,11 @@ async function loadAll(){
   renderCols($("gpsCols"),GPS_FIELDS,gMap.mapping,gMap.unmatched);
   renderSummary(athletes,sessions,joined);
   renderWarn(unmatchedPlayers,noData);
-  if(res){$("joinWarn").innerHTML+=($("joinWarn").innerHTML?"<br>":"")+`<span style="color:var(--ok)">✓ Max Vel % of top computed from tested top speed for ${computedPct} match(es).</span>`;}
+  if(res){$("joinWarn").innerHTML+=($("joinWarn").innerHTML?"<br>":"")+`<span style="color:var(--ok)">✓ Max Vel % of top computed from tested top speed for ${computedPct} match(es).</span>`;
+    if(needTest.size)$("joinWarn").innerHTML+=`<br>⚠ Match top speed present but no tested max matched — check the name matches the Results tab exactly and that <code>max_vel_ms</code> is filled: ${[...needTest].join(", ")}`;
+    const testedNames=Object.keys(maxMap);
+    if(testedNames.length)$("joinWarn").innerHTML+=`<br><span style="color:var(--muted)">Tested max loaded for: ${testedNames.length} athlete(s).</span>`;
+  }
   renderPreview(joined);
   renderRead(joined);
   renderEngine(joined);
