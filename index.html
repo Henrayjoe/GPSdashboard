@@ -800,7 +800,7 @@ async function loadAll(){
     if(needTest.size)$("joinWarn").innerHTML+=`<br>⚠ Match top speed present but no tested max matched — check the name matches the Results tab exactly and that <code>max_vel_ms</code> is filled: ${[...needTest].join(", ")}`;
     const testedNames=Object.keys(maxMap);
     if(testedNames.length)$("joinWarn").innerHTML+=`<br><span style="color:var(--muted)">Tested max loaded: ${testedNames.map(k=>`${maxDisp[k]} (${maxMap[k]} m/s)`).join(", ")}</span>`;
-    else $("joinWarn").innerHTML+=`<br>⚠ No usable <code>max_vel_ms</code> values found in the Results tab — check the column is named max_vel_ms and holds numbers.`;
+    else $("joinWarn").innerHTML+=`<br>⚠ No <code>max_vel_ms</code> column found in the tab loaded for slot 3. It read ${res.data.length} rows with these columns: <code>${(res.fields||[]).join(" · ")}</code>. If those are your GPS or Athletes columns, slot 3 is pointing at the wrong tab — fix the Tab name (exactly, case-sensitive) or use the Results tab's own published-CSV link.`;
   }
   renderPreview(joined);
   renderRead(joined);
