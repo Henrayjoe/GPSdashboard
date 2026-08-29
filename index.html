@@ -161,6 +161,27 @@
       </div>
       <div class="err" id="gpsErr"></div>
     </div>
+
+    <h2 style="margin-top:22px">3 · Max-speed test <span style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--muted)">(optional)</span></h2>
+    <p class="h2note">A tab with each athlete's tested top speed (<code>max_vel_ms</code>, in m/s). If present, the tool computes Max Vel % of top for every match automatically.</p>
+    <div class="slot">
+      <div class="tabs" data-slot="res">
+        <div class="tab active" data-src="sheet">Google Sheet (live)</div>
+        <div class="tab" data-src="paste">Paste CSV</div>
+      </div>
+      <div id="res-sheet">
+        <div class="row">
+          <div><label>Published link or Sheet ID</label><input type="text" id="resUrl" placeholder="leave blank to skip"></div>
+          <div style="flex:0 0 180px"><label>Tab name</label><input type="text" id="resTab" placeholder="Results" value="Results"></div>
+        </div>
+      </div>
+      <div id="res-paste" class="hide">
+        <label>Paste CSV</label>
+        <textarea id="resPaste" placeholder="player,max_vel_ms&#10;Marius Söderbäck,9.8"></textarea>
+      </div>
+      <div class="err" id="resErr"></div>
+    </div>
+
     <p class="note">If both tabs live in the same sheet: paste the <b>Sheet ID</b> once in each box and just change the tab name. Same-sheet must be shared "anyone with the link can view"; published links work per-tab. Join key is the player <b>name</b> (falls back to <code>id</code> if both sheets carry it).</p>
     <div style="margin-top:16px"><button class="big" id="loadBtn">Load &amp; join</button></div>
   </div>
@@ -709,27 +730,53 @@ function fetchSource(kind){
   });
 }
 
+const RES_FIELDS=[
+  {key:"name",       label:"Name",         aliases:["name","player","athlete","playername","fullname"]},
+  {key:"max_vel_ms", label:"Max vel (m/s)",num:true, aliases:["maxvelms","maxvelocityms","maxspeedms","topspeedms","maxvel","maxvelocity","topspeed","vmax"]},
+];
+
 /* ---------- Load & join ---------- */
 async function loadAll(){
-  $("athErr").textContent="";$("gpsErr").textContent="";
+  $("athErr").textContent="";$("gpsErr").textContent="";$("resErr").textContent="";
   let ath,gps;
   try{ath=await fetchSource("ath");}catch(e){$("athErr").textContent="Athletes: "+e;return;}
   try{gps=await fetchSource("gps");}catch(e){$("gpsErr").textContent="GPS: "+e;return;}
+
+  // optional Results tab (tested max speed) — never blocks the load
+  let res=null;
+  const resActive=document.querySelector('.tabs[data-slot="res"] .tab.active').dataset.src;
+  const resHasInput=(resActive==="sheet"?$("resUrl").value.trim():$("resPaste").value.trim());
+  if(resHasInput){try{res=await fetchSource("res");}catch(e){$("resErr").textContent="Max-speed: "+e;}}
 
   const aMap=buildMapping(ATH_FIELDS,ath.fields);
   const gMap=buildMapping(GPS_FIELDS,gps.fields);
   const athletes=normalizeRows(ATH_FIELDS,ath.data,aMap.mapping).filter(r=>r.name);
   const sessions=normalizeRows(GPS_FIELDS,gps.data,gMap.mapping).filter(r=>r.player&&r.date);
 
+  // tested max speed per athlete (best value if several rows)
+  const maxMap={};
+  if(res){
+    const rMap=buildMapping(RES_FIELDS,res.fields);
+    normalizeRows(RES_FIELDS,res.data,rMap.mapping).forEach(r=>{
+      if(r.name&&r.max_vel_ms!=null&&r.max_vel_ms>0){const k=norm(r.name);maxMap[k]=Math.max(maxMap[k]||0,r.max_vel_ms);}
+    });
+  }
+
   // index athletes by name and id
   const byName={},byId={};
   athletes.forEach(a=>{if(a.name)byName[norm(a.name)]=a;if(a.id)byId[norm(a.id)]=a;});
 
   const unmatchedPlayers=new Set();
+  let computedPct=0;
   const joined=sessions.map(s=>{
     let a=(s.id&&byId[norm(s.id)])||byName[norm(s.player)]||null;
     if(!a)unmatchedPlayers.add(s.player);
+    // Max Vel % of top: compute from tested max_vel_ms if the cell is blank (match max_velocity is km/h → m/s)
+    let mvp=s.max_vel_pct;
+    const tested=maxMap[norm(s.player)];
+    if(mvp==null&&tested&&s.max_velocity!=null){mvp=Math.round((s.max_velocity/3.6)/tested*1000)/10;computedPct++;}
     return Object.assign({},s,{
+      max_vel_pct:mvp,
       position:a?a.position:null,age:a?a.age:null,injury_hx:a?a.injury_hx:null,
       height_cm:a?a.height_cm:null,weight_kg:a?a.weight_kg:null
     });
@@ -738,12 +785,13 @@ async function loadAll(){
   const gpsNames=new Set(sessions.map(s=>norm(s.player)));
   const noData=athletes.filter(a=>!gpsNames.has(norm(a.name))).map(a=>a.name);
 
-  window.GPS={athletes,sessions,joined};
+  window.GPS={athletes,sessions,joined,maxMap,computedPct};
 
   renderCols($("athCols"),ATH_FIELDS,aMap.mapping,aMap.unmatched);
   renderCols($("gpsCols"),GPS_FIELDS,gMap.mapping,gMap.unmatched);
   renderSummary(athletes,sessions,joined);
   renderWarn(unmatchedPlayers,noData);
+  if(res){$("joinWarn").innerHTML+=($("joinWarn").innerHTML?"<br>":"")+`<span style="color:var(--ok)">✓ Max Vel % of top computed from tested top speed for ${computedPct} match(es).</span>`;}
   renderPreview(joined);
   renderRead(joined);
   renderEngine(joined);
@@ -807,6 +855,7 @@ $("loadBtn").addEventListener("click",()=>{
   try{
     localStorage.setItem("gps_athUrl",$("athUrl").value);localStorage.setItem("gps_athTab",$("athTab").value);
     localStorage.setItem("gps_gpsUrl",$("gpsUrl").value);localStorage.setItem("gps_gpsTab",$("gpsTab").value);
+    localStorage.setItem("gps_resUrl",$("resUrl").value);localStorage.setItem("gps_resTab",$("resTab").value);
   }catch(e){}
   loadAll();
 });
@@ -819,7 +868,7 @@ if(coachEl){
 
 /* restore */
 try{
-  ["athUrl","athTab","gpsUrl","gpsTab"].forEach(k=>{const v=localStorage.getItem("gps_"+k);if(v)$(k).value=v;});
+  ["athUrl","athTab","gpsUrl","gpsTab","resUrl","resTab"].forEach(k=>{const v=localStorage.getItem("gps_"+k);if(v)$(k).value=v;});
   const c=localStorage.getItem("gps_coach");if(c&&coachEl)coachEl.value=c;
 }catch(e){}
 </script>
