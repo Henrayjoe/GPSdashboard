@@ -517,6 +517,38 @@ function focusNext(x,matches){
   if(!bits.length) bits.push("Numbers sit in a healthy range — maintain the current load rhythm.");
   return bits.slice(0,2);
 }
+function coachRead(matches){
+  const out=[],tot=matches.length,last=matches[matches.length-1]||{};
+  const cleanI=matches.map(intensityOf).filter(v=>v!=null);
+  // recent momentum: last 2 vs prior 2
+  if(cleanI.length>=4){
+    const n=cleanI.length,l2=mean(cleanI.slice(n-2)),p2=mean(cleanI.slice(n-4,n-2));
+    if(p2){const ch=Math.round((l2-p2)/p2*100);out.push(`Recent momentum: HSR/min ${ch>=0?"+":""}${ch}% over the last 2 matches vs the prior 2${ch<=-10?" — a real dip, check freshness":ch>=10?" — trending up":""}.`);}
+  }
+  // fixture congestion
+  const dated=matches.filter(m=>parseDate(m.date)).sort((a,b)=>parseDate(a.date)-parseDate(b.date));
+  if(dated.length>=2){
+    let minGap=Infinity,gi=-1;
+    for(let i=1;i<dated.length;i++){const g=Math.round((parseDate(dated[i].date)-parseDate(dated[i-1].date))/86400000);if(g>=0&&g<minGap){minGap=g;gi=i;}}
+    if(gi>0&&minGap<Infinity)out.push(`Tightest turnaround: ${minGap} day${minGap===1?"":"s"} (${sessLabel(dated[gi-1])} → ${sessLabel(dated[gi])})${minGap<=4?" — short recovery window, manage cumulative load":""}.`);
+  }
+  // last-match load profile (rank within his own season)
+  const rankNum=g=>{const vals=matches.map(g).filter(v=>v!=null).sort((a,b)=>b-a);const lv=g(last);return (lv==null||!vals.length)?null:vals.indexOf(lv)+1;};
+  const dr=rankNum(x=>x.total_distance),ir=rankNum(intensityOf);
+  if(dr&&ir){
+    const lean=dr<ir-1?"a volume grind — ran far at lower per-minute intensity":ir<dr-1?"an intensity game — sharp output, less total volume":"a balanced load";
+    out.push(`Last match was ${lean} (distance ${dr}/${tot}, intensity ${ir}/${tot} in his season).`);
+  }
+  // internal vs external decoupling
+  const exRank=rankNum(x=>x.heart_exertion!=null?x.heart_exertion:x.hr_avg);
+  if(exRank&&ir&&tot>=4&&exRank<=Math.ceil(tot/3)&&ir>=Math.ceil(2*tot/3))
+    out.push(`Internal load high but running output low last match — worked hard for modest output, a possible fatigue signal.`);
+  // what stood out (z beyond ±1.5)
+  const zList=[["HSR/min",intensityOf],["Sprint distance",x=>x.sprint_distance],["Total distance",x=>x.total_distance],["Accel/dec",x=>x.accel_decel_count]]
+    .map(([lab,g])=>{const s=seriesStats(matches.map(g));return s&&s.z!=null&&Math.abs(s.z)>=1.5?`${lab} ${s.z>0?"+":""}${s.z.toFixed(1)} SD`:null;}).filter(Boolean);
+  if(zList.length)out.push(`Stood out last match: ${zList.join(", ")}.`);
+  return out;
+}
 function statusChip(lab,st){const col={green:"--ok",amber:"--warn",grey:"--muted"}[st.c];
   return `<div style="border:1px solid var(${col});padding:8px 11px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">${lab}</div><div style="font-size:13px;font-weight:600;color:var(${col});margin-top:2px">${st.t}</div></div>`;}
 const FLAGHEX={green:"#2f7d47",amber:"#b7791f",red:"#a02c2c",grey:"#9a968f"};
@@ -585,17 +617,24 @@ function maxSpeedBlock(matches){
     <div style="font-size:12px;color:var(--muted);white-space:nowrap">recorded ${sessLabel(matches[bi])}</div>
   </div>`;
 }
-function seasonBlock(matches){
+function seasonBlock(matches,opts){
+  opts=opts||{};
   const s=seasonInsights(matches);
   const tcol={up:"#2f7d47",flat:"#6b6864",down:"#b7791f",grey:"#9a968f"}[s.trend.dir];
   const minTxt=s.avgMin==null?"—":`${Math.round(s.avgMin)} avg${s.minLo!=null&&s.minLo!==s.minHi?` (${s.minLo}–${s.minHi})`:""}`;
   const chips=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:6px 0 12px">
     ${statusChip("Availability",s.st.avail)}${statusChip("Intensity",s.st.intensity)}${statusChip("Explosiveness",s.st.explosive)}${statusChip("Consistency",s.st.consistency)}</div>`;
   const narr=`<div style="font-size:13.5px;line-height:1.5;border-left:3px solid var(--ink);padding:2px 0 2px 12px;margin:0 0 14px">${seasonNarrative(s)}</div>`;
+  // coach-only blocks (excluded from the athlete-facing PDF)
   const focus=focusNext(s,matches);
   const focusEl=`<div class="pb" style="border:1px solid var(--line);background:#fff;padding:12px 14px;margin:0 0 14px">
     <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Focus next</div>
     <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5">${focus.map(f=>`<li>${f}</li>`).join("")}</ul></div>`;
+  const cr=opts.coach?coachRead(matches):[];
+  const coachEl=cr.length?`<div class="pb" style="border:1px solid var(--warn);background:#fff;padding:12px 14px;margin:0 0 14px">
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--warn);margin-bottom:5px">Coach read · not printed for the athlete</div>
+    <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.5">${cr.map(f=>`<li>${f}</li>`).join("")}</ul></div>`:"";
+  const coachBlocks=opts.coach?(coachEl+focusEl):"";
   const lastM=matches[matches.length-1]||{};
   const hrCell=lastM.hr_avg!=null?`<div class="metric">Avg HR (last)<b style="font-size:16px">${Math.round(lastM.hr_avg)} bpm</b></div>`:"";
   const exCell=lastM.heart_exertion!=null?`<div class="metric">Heart exertion<b style="font-size:16px">${Math.round(lastM.heart_exertion)}</b></div>`:"";
@@ -615,7 +654,7 @@ function seasonBlock(matches){
   const pbs=`<div class="pb"><div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:16px 0 5px">Personal bests</div><div style="margin-top:2px">${pb("HSR/min",s.pbs.hsrmin,"/min",2)}${pb("Sprint distance",s.pbs.sprint,"m")}${pb("Top-speed exposure",s.pbs.maxvel,"%")}${pb("Total distance",s.pbs.dist,"m")}</div></div>`;
   const rows=matches.slice().reverse().map(x=>`<tr><td>${sessLabel(x)}</td><td>${x.date||"—"}</td><td>${x.total_duration_min!=null?x.total_duration_min:"—"}</td><td>${intensityOf(x)!=null?intensityOf(x).toFixed(2):"—"}</td></tr>`).join("");
   const log=`<div class="pb"><div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:14px 0 4px">Match log</div><div class="scroll" style="max-height:200px"><table><tr><th>Session</th><th>Date</th><th>Min</th><th>HSR/min</th></tr>${rows}</table></div></div>`;
-  return chips+narr+focusEl+metrics+maxSpeedBlock(matches)+strip+visuals+pbs+log;
+  return chips+narr+coachBlocks+metrics+maxSpeedBlock(matches)+strip+visuals+pbs+log;
 }
 function labeledChart(label,vals,unit,color,dates,meaning,yunit){
   const clean=vals.filter(v=>v!=null);
@@ -658,7 +697,7 @@ function openAthlete(player){
     <span class="flag ${f.level}" style="margin-top:4px"><span class="dot"></span>${f.label}</span>
     ${charts}
     <h2 style="font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:8px 0 0">Season so far</h2>
-    ${seasonBlock(m)}
+    ${seasonBlock(m,{coach:true})}
     <h2 style="font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:16px 0 0">Changes between game summaries</h2>
     ${notesHtml(m)}`;
   document.getElementById("overlay").classList.add("show");
