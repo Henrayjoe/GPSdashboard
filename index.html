@@ -549,8 +549,11 @@ function coachRead(matches){
   if(zList.length)out.push(`Stood out last match: ${zList.join(", ")}.`);
   return out;
 }
-function statusChip(lab,st){const col={green:"--ok",amber:"--warn",grey:"--muted"}[st.c];
-  return `<div style="border:1px solid var(${col});padding:8px 11px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">${lab}</div><div style="font-size:13px;font-weight:600;color:var(${col});margin-top:2px">${st.t}</div></div>`;}
+function initialsOf(name){return (""+(name||"")).split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase()||"–";}
+function statusChip(lab,st){
+  const col={green:"#2f7d47",amber:"#b7791f",grey:"#6b6864"}[st.c];
+  const bg={green:"#edf5ef",amber:"#faf2e5",grey:"#f1efe8"}[st.c];
+  return `<div style="border:1px solid ${col}33;border-left:3px solid ${col};background:${bg};padding:8px 11px;border-radius:4px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">${lab}</div><div style="font-size:13px;font-weight:600;color:${col};margin-top:2px">${st.t}</div></div>`;}
 const FLAGHEX={green:"#2f7d47",amber:"#b7791f",red:"#a02c2c",grey:"#9a968f"};
 function perMatchFlags(matches){
   const vals=matches.map(intensityOf),flags=[];
@@ -590,12 +593,14 @@ function progressBars(matches){
   const avgMin=mins.length?mean(mins):null;
   let ctx="";
   if(latest.total_duration_min!=null&&avgMin!=null&&latest.total_duration_min>avgMin+15)
-    ctx=`<div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.4">${sessLabel(latest)} was ${latest.total_duration_min} min vs a ${Math.round(avgMin)}-min average — longer matches usually show lower per-minute output, so a dip here is expected, not a red flag.</div>`;
+    ctx=`<div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.4">${sessLabel(latest)} was ${latest.total_duration_min} min vs your ${Math.round(avgMin)}-min average — longer matches usually show lower per-minute output, so a dip here is expected, not a red flag.</div>`;
   return `<div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px">How close to your best</div>${bars||'<span class="note">No data yet.</span>'}${ctx}`;
 }
 function radarSvg(matches){
   const latest=matches[matches.length-1]||{};
-  const defs=[["HSR/min",intensityOf(latest),bestOf(matches,intensityOf)],["Sprint",latest.sprint_distance,bestOf(matches,x=>x.sprint_distance)],["Top speed",latest.max_vel_pct,bestOf(matches,x=>x.max_vel_pct)],["Distance",latest.total_distance,bestOf(matches,x=>x.total_distance)],["Accel/dec",latest.accel_decel_count,bestOf(matches,x=>x.accel_decel_count)]];
+  const defsAll=[["HSR/min",intensityOf(latest),bestOf(matches,intensityOf)],["Sprint",latest.sprint_distance,bestOf(matches,x=>x.sprint_distance)],["Top speed",latest.max_vel_pct,bestOf(matches,x=>x.max_vel_pct)],["Distance",latest.total_distance,bestOf(matches,x=>x.total_distance)],["Accel/dec",latest.accel_decel_count,bestOf(matches,x=>x.accel_decel_count)]];
+  const defs=defsAll.filter(d=>d[1]!=null&&d[2]&&d[2]>0); // only metrics with data this match + a season best
+  if(defs.length<3)return ""; // a radar needs 3+ axes to read; otherwise skip it
   const N=defs.length,cx=140,cy=140,R=92;
   const pt=(i,r)=>{const a=-Math.PI/2+i*2*Math.PI/N;return [cx+r*Math.cos(a),cy+r*Math.sin(a)];};
   let grid="";[0.25,0.5,0.75,1].forEach(f=>{grid+=`<polygon points="${defs.map((_,i)=>pt(i,R*f).map(n=>n.toFixed(1)).join(",")).join(" ")}" fill="none" stroke="#e1e0d9" stroke-width="1"/>`;});
@@ -629,7 +634,7 @@ function gameBarsBlock(matches,opts){
     <div style="font-size:11px;color:var(--muted);margin-bottom:9px">${m.date||""}${m.total_duration_min!=null?" · "+m.total_duration_min+" min":""}</div>
     ${gameBars(m,maxes)}
   </div>`).join("");
-  const title=opts.coach?"Every game · bars scaled to his season best":"Latest game · bars scaled to his season best";
+  const title=opts.coach?"Every game · bars scaled to season best":"Latest game · bars scaled to your season best";
   return `<div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:16px 0 6px">${title}</div>${cards}`;
 }
 function maxSpeedBlock(matches){
@@ -673,8 +678,10 @@ function seasonBlock(matches,opts){
     ${hrCell}${exCell}
   </div>`;
   const strip=availabilityStrip(matches);
-  const visuals=`<div class="pb" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:16px 0 4px;align-items:start">
-    <div>${radarSvg(matches)}</div><div>${progressBars(matches)}</div></div>`;
+  const radarHtml=radarSvg(matches);
+  const visuals=radarHtml
+    ? `<div class="pb" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:16px 0 4px;align-items:start"><div>${radarHtml}</div><div>${progressBars(matches)}</div></div>`
+    : `<div class="pb" style="margin:16px 0 4px">${progressBars(matches)}</div>`;
   const pb=(lab,o,unit,d=0)=>o?`<span class="pill"><b style="font-weight:600">${lab}:</b> ${Number(o.v).toFixed(d)}${unit||""} <em style="color:var(--muted)">(${o.name})</em></span>`:"";
   const pbs=`<div class="pb"><div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:16px 0 5px">Personal bests</div><div style="margin-top:2px">${pb("HSR/min",s.pbs.hsrmin,"/min",2)}${pb("Sprint distance",s.pbs.sprint,"m")}${pb("Top-speed exposure",s.pbs.maxvel,"%")}${pb("Total distance",s.pbs.dist,"m")}</div></div>`;
   const games=gameBarsBlock(matches,{coach:opts.coach});
@@ -682,6 +689,7 @@ function seasonBlock(matches,opts){
 }
 function labeledChart(label,vals,unit,color,dates,meaning,yunit){
   const clean=vals.filter(v=>v!=null);
+  if(!clean.length)return ""; // metric entirely absent in this player's data — drop the chart
   const val=clean.length?clean[clean.length-1]:null;
   const d0=dates&&dates.length?dates[0]:"", d1=dates&&dates.length?dates[dates.length-1]:"";
   const xrow=`<div style="display:flex;justify-content:space-between;font-size:9.5px;color:var(--muted);margin-top:3px"><span>${d0}</span><span>match date →</span><span>${d1}</span></div>`;
@@ -703,22 +711,28 @@ function openAthlete(player){
   const prof=m[0]||{};
   const meta=[prof.position,prof.age?prof.age+"y":null].filter(Boolean).join(" · ");
   const charts=`<div class="charts">
-    ${labeledChart("HSR / min",m.map(intensityOf),"",FLAG_COLOR[f.level],m.map(x=>x.date),"High-speed metres run per minute — how intense the match was. Shaded band is his own normal range.","m/min")}
+    ${labeledChart("HSR / min",m.map(intensityOf),"",FLAG_COLOR[f.level],m.map(x=>x.date),"High-speed metres run per minute — how intense the match was. Shaded band is your own normal range.","m/min")}
     ${labeledChart("Total distance (m)",m.map(x=>x.total_distance),"",null,m.map(x=>x.date),"Total metres covered in the match — overall volume.","metres")}
     ${labeledChart("Sprint distance (m)",m.map(x=>x.sprint_distance),"",null,m.map(x=>x.date),"Metres run at sprint speed — top-end output.","metres")}
-    ${labeledChart("Max vel % of top",m.map(x=>x.max_vel_pct),"%",null,m.map(x=>x.date),"How close to his top speed he got in the match.","% of max")}
+    ${labeledChart("Max vel % of top",m.map(x=>x.max_vel_pct),"%",null,m.map(x=>x.date),"How close to your top speed you got in the match.","% of max")}
     ${m.some(x=>x.hr_avg!=null)?labeledChart("Avg HR (bpm)",m.map(x=>x.hr_avg),"",null,m.map(x=>x.date),"Average heart rate — internal load. The same running at a higher HR can signal fatigue.","bpm"):""}
     ${m.some(x=>x.heart_exertion!=null)?labeledChart("Heart exertion",m.map(x=>x.heart_exertion),"",null,m.map(x=>x.date),"Total cardiovascular work in the match — internal load volume.","exertion"):""}
   </div>`;
   document.getElementById("modal").innerHTML=`
     <div class="mtop">
-      <div><h3>${player}</h3><div class="msub">${meta||"—"} · ${m.length} matches · last ${m.length?sessLabel(m[m.length-1]):"—"}</div></div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:44px;height:44px;border-radius:50%;background:#185FA5;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:15px;flex:0 0 auto">${initialsOf(player)}</div>
+        <div><h3>${player}</h3><div class="msub">${meta||"—"} · ${m.length} matches · last ${m.length?sessLabel(m[m.length-1]):"—"}</div></div>
+      </div>
       <div class="mbtns">
         <button id="pdfOne">Save as PDF</button>
         <button class="secondary" id="closeModal">Close</button>
       </div>
     </div>
-    <span class="flag ${f.level}" style="margin-top:4px"><span class="dot"></span>${f.label}</span>
+    <div style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span class="flag ${f.level}"><span class="dot"></span>${f.label}</span>
+      ${prof.injury_hx?`<span style="font-size:11px;background:#faeeda;color:#633806;border:1px solid #ef9f27;border-radius:11px;padding:2px 10px">⚠ ${prof.injury_hx}</span>`:""}
+    </div>
     ${charts}
     <h2 style="font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:8px 0 0">Season so far</h2>
     ${seasonBlock(m,{coach:true})}`;
@@ -735,26 +749,36 @@ function athletePageHtml(player){
   const prof=m[0]||{};
   const meta=[prof.position,prof.age?prof.age+"y":null].filter(Boolean).join(" · ");
   const charts=`<div class="pp-charts">
-    ${labeledChart("HSR / min",m.map(intensityOf),"",FLAG_COLOR[f.level],m.map(x=>x.date),"High-speed metres run per minute — how intense the match was. Shaded band is his own normal range.","m/min")}
+    ${labeledChart("HSR / min",m.map(intensityOf),"",FLAG_COLOR[f.level],m.map(x=>x.date),"High-speed metres run per minute — how intense the match was. Shaded band is your own normal range.","m/min")}
     ${labeledChart("Total distance (m)",m.map(x=>x.total_distance),"",null,m.map(x=>x.date),"Total metres covered in the match — overall volume.","metres")}
     ${labeledChart("Sprint distance (m)",m.map(x=>x.sprint_distance),"",null,m.map(x=>x.date),"Metres run at sprint speed — top-end output.","metres")}
-    ${labeledChart("Max vel % of top",m.map(x=>x.max_vel_pct),"%",null,m.map(x=>x.date),"How close to his top speed he got in the match.","% of max")}
+    ${labeledChart("Max vel % of top",m.map(x=>x.max_vel_pct),"%",null,m.map(x=>x.date),"How close to your top speed you got in the match.","% of max")}
     ${m.some(x=>x.hr_avg!=null)?labeledChart("Avg HR (bpm)",m.map(x=>x.hr_avg),"",null,m.map(x=>x.date),"Average heart rate — internal load. The same running at a higher HR can signal fatigue.","bpm"):""}
     ${m.some(x=>x.heart_exertion!=null)?labeledChart("Heart exertion",m.map(x=>x.heart_exertion),"",null,m.map(x=>x.date),"Total cardiovascular work in the match — internal load volume.","exertion"):""}
   </div>`;
   const latest=m[m.length-1]||{};
   const coach=getCoach();
   const today=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
+  const injury=(m[0]&&m[0].injury_hx&&(""+m[0].injury_hx).trim())||"";
   return `<div class="athlete-page">
-    <div style="border-bottom:2px solid #141414;padding-bottom:8px;margin-bottom:16px">
-      <div style="font-size:18px;font-weight:600">GPS Season Report</div>
-      <div style="font-size:12px;color:#555">${coach?`Physical Performance Coach — ${coach} · `:""}Generated ${today}</div>
+    <div style="border-bottom:2px solid #141414;padding-bottom:8px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:baseline">
+      <div style="font-size:16px;font-weight:600;letter-spacing:.02em">GPS SEASON REPORT</div>
+      <div style="font-size:11px;color:#777;text-align:right">${coach?`Physical Performance Coach — ${coach}<br>`:""}Generated ${today}</div>
     </div>
-    <h2>${player}</h2>
-    <div style="font-size:13px;color:#555;margin:2px 0 12px">${meta||""} · ${m.length} matches · last match ${m.length?sessLabel(m[m.length-1]):"—"}</div>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+      <div style="width:50px;height:50px;border-radius:50%;background:#185FA5;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:17px;flex:0 0 auto">${initialsOf(player)}</div>
+      <div>
+        <div style="font-size:23px;font-weight:600;line-height:1.1">${player}</div>
+        <div style="font-size:13px;color:#555;margin-top:3px">${meta||""} · ${m.length} matches · last match ${m.length?sessLabel(m[m.length-1]):"—"}</div>
+        ${injury?`<span style="display:inline-block;margin-top:6px;font-size:11px;background:#faeeda;color:#633806;border:1px solid #ef9f27;border-radius:11px;padding:2px 10px">⚠ ${injury}</span>`:""}
+      </div>
+    </div>
     ${charts}
     <div style="font-size:13px;font-weight:600;margin:6px 0 4px">Season so far</div>
     ${seasonBlock(m)}
+    <div style="border-top:1px solid #d8d4cd;margin-top:20px;padding-top:9px;font-size:10px;color:#999;display:flex;justify-content:space-between">
+      <span>FootballFit · Individual Coaching · ${player}</span><span>${coach||""}</span>
+    </div>
   </div>`;
 }
 function exportPDF(players){
