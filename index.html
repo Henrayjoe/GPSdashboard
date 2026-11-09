@@ -13,6 +13,8 @@
   --peach:#1E44B0; --cream:#F4F6FB; --teal:#7C9BEA;
   --grad:linear-gradient(90deg,#1E44B0 0%,#7C9BEA 50%,#F4F6FB 100%);
   --font:'Inter','Helvetica Neue',Arial,sans-serif;
+  --g1:#1E44B0; --g2:#7C9BEA; --g3:#F4F6FB; --accent:#9FB6F0;
+  --sv-fg:#F4F6FB; --sv-cur:#F4F6FB; --sv-halo:#7C9BEA; --sv-dot:#8F8D88; --sv-dim:#77756F; --sv-muted:#A6A39D; --sv-grid:rgba(255,255,255,.16); --sv-griddot:rgba(255,255,255,.35); --sv-br:rgba(242,239,233,.55); --sv-bg:#2A2A2A; --tipbg:#383837;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -28,7 +30,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 
 /* brackets */
 .br{position:relative;padding:22px 26px}
-.br::before,.br::after{content:"";position:absolute;top:0;bottom:0;width:9px;border:1px solid rgba(242,239,233,.55);pointer-events:none}
+.br::before,.br::after{content:"";position:absolute;top:0;bottom:0;width:9px;border:1px solid var(--sv-br);pointer-events:none}
 .br::before{left:0;border-right:0}
 .br::after{right:0;border-left:0}
 
@@ -68,7 +70,7 @@ main{padding-bottom:40px}
 .tile .v{font-size:44px;font-weight:200;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1;margin-top:10px}
 .tile .v small{font-size:13px;color:var(--muted);margin-left:6px;letter-spacing:.12em;font-weight:300}
 .word{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-top:6px}
-.word.best{color:#9FB6F0;font-weight:500}
+.word.best{color:var(--accent);font-weight:600}
 .tile svg{width:100%;height:auto;display:block;margin-top:12px}
 .keyrow{display:flex;gap:26px;flex-wrap:wrap;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin-top:22px}
 .keyrow i{display:inline-block;vertical-align:-2px;margin-right:8px}
@@ -80,12 +82,12 @@ main{padding-bottom:40px}
 .bars{display:flex;flex-direction:column;gap:8px}
 .bar{position:relative;height:6px}
 .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px}
-.bar.prev{height:2px}.bar.prev i{background:#5E5C58}
+.bar.prev{height:2px}.bar.prev i{background:var(--sv-dot)}
 .bar.now i{background:var(--grad);box-shadow:0 0 14px rgba(124,155,234,.25)}
 .bar span{position:absolute;top:50%;transform:translateY(-50%);font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap;padding-left:12px;color:var(--dim)}
 .bar.now span{color:var(--ink);font-size:13px}
 .arr{width:30px;height:30px;border-radius:50%;border:1px solid var(--rule);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted)}
-.arr.up{border-color:var(--cream);color:var(--cream)}
+.arr.up{border-color:var(--ink);color:var(--ink)}
 .cleg{display:flex;gap:26px;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);padding-bottom:6px}
 .cleg i{display:inline-block;width:22px;margin-right:8px;vertical-align:3px}
 
@@ -109,7 +111,7 @@ main{padding-bottom:40px}
 .bst b{font-size:30px;font-weight:200;font-variant-numeric:tabular-nums;margin-top:6px}
 .bst b small{font-size:12px;color:var(--muted);margin-left:5px;letter-spacing:.12em}
 .bst span{font-size:12px;color:var(--dim)}
-.bst .new{font-size:10px;letter-spacing:.26em;text-transform:uppercase;color:#9FB6F0;font-weight:600}
+.bst .new{font-size:10px;letter-spacing:.26em;text-transform:uppercase;color:var(--accent);font-weight:600}
 
 /* raw log */
 details.raw{margin-top:40px;border-top:1px solid var(--rule);padding-top:20px}
@@ -178,6 +180,39 @@ footer img{height:14px;width:auto;display:block}
   .word.best,.bst .new{background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;color:#8FA9EE!important}
 }
 #printAll{display:none}
+/* ===== Hintsa-format sheets ===== */
+.hero .wrap{padding-bottom:76px}
+.sheet{position:relative;border-radius:30px 30px 0 0;margin-top:-30px;padding:60px 0 84px;box-shadow:0 -14px 34px rgba(0,0,0,.28)}
+.sheet.dark{background:#2A2A2A;--sv-bg:#2A2A2A}
+.sheet.light{background:#F7F6F2;color:#161616;
+  --ink:#161616; --muted:#5F5D58; --dim:#8A8883; --rule:rgba(0,0,0,.12); --rule2:rgba(0,0,0,.07); --bg:#F7F6F2;
+  --grad:linear-gradient(90deg,#1E44B0 0%,#4F74DB 55%,#A9BEF2 100%); --g1:#1E44B0; --g2:#4F74DB; --g3:#A9BEF2; --accent:#1E44B0;
+  --sv-fg:#161616; --sv-cur:#1E44B0; --sv-halo:#1E44B0; --sv-dot:#B9B6AF; --sv-dim:#9A9892; --sv-muted:#6B6964; --sv-grid:rgba(0,0,0,.1); --sv-griddot:rgba(0,0,0,.28); --sv-br:rgba(22,22,22,.4); --sv-bg:#F7F6F2; --tipbg:#ECEAE4}
+.sheet.light .sd.hit{color:#fff}
+.sheet.light .bar.now i{box-shadow:none}
+.sheet.light .tabsm button[aria-pressed="true"]{color:#161616}
+.shead{display:flex;align-items:center;gap:12px}
+.ico{width:26px;height:26px;color:var(--ink)}
+.sheet .h2{font-size:34px;margin-top:14px;letter-spacing:-.015em}
+.intro{font-size:19px;line-height:1.5;color:var(--ink);max-width:700px;margin-top:14px;font-weight:300}
+.tipb{display:grid;grid-template-columns:28px minmax(0,1fr);gap:16px;align-items:center;background:var(--tipbg);border-radius:14px;padding:20px 22px;margin-top:30px;color:var(--ink)}
+.tipb p{font-size:15px;line-height:1.55}
+.tipb b{font-weight:600}
+.cmpbox{margin-top:28px}
+.crow{border-bottom:1px dashed var(--rule)!important}
+.crow:last-child{border-bottom:0!important}
+.kd{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--sv-dot);vertical-align:0}
+.kd.cur{width:12px;height:12px;background:var(--sv-cur);vertical-align:-1px}
+.ka{display:inline-block;width:0;height:13px;border-left:1px dashed var(--sv-fg);vertical-align:-2px}
+.cleg i.lp{display:inline-block;width:22px;height:2px;background:var(--sv-dot)}
+.cleg i.ln2{display:inline-block;width:22px;height:5px;border-radius:3px;background:var(--grad)}
+.rawsheet{padding-bottom:50px}
+.rawsheet details.raw{margin-top:0;border-top:0;padding-top:0}
+.data{border-top:0;margin-top:0}
+.sheet + section .data, #main + section{position:relative}
+@media (max-width:820px){.sheet{border-radius:22px 22px 0 0;margin-top:-22px;padding:44px 0 64px}.sheet .h2{font-size:27px}.intro{font-size:17px}}
+@media print{.rawsheet{display:none!important}.sheet{box-shadow:none;break-inside:auto}.tipb{break-inside:avoid}.sheet{padding:40px 0 56px}}
+
 </style>
 </head>
 <body>
@@ -197,7 +232,7 @@ footer img{height:14px;width:auto;display:block}
     <div id="heroBody"></div>
   </div>
 </header>
-<main class="wrap" id="main"></main>
+<main id="main"></main>
 
 <section class="wrap">
 <details class="data" id="dataSec">
@@ -326,7 +361,6 @@ function stat(ms,g,idx){ // compare match idx with previous match and the season
 /* ================= Visual system ================= */
 const PEACH="#1E44B0",CREAM="#F4F6FB",TEAL="#7C9BEA";
 let GID=0;
-function gradDef(x1,x2,y1=0,y2=0){const id="g"+(++GID);return {id,def:`<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><stop offset="0" stop-color="${PEACH}"/><stop offset=".5" stop-color="${TEAL}"/><stop offset="1" stop-color="${CREAM}"/></linearGradient>`};}
 function smooth(pts,t=.13){if(pts.length<2)return "";if(pts.length===2)return `M${pts[0].join(",")}L${pts[1].join(",")}`;
   let d=`M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
   for(let i=0;i<pts.length-1;i++){const p0=pts[i-1]||pts[i],p1=pts[i],p2=pts[i+1],p3=pts[i+2]||p2;
@@ -348,19 +382,6 @@ function word(s){
   if(s.vsAvg==null)return `<span class="word">First match logged</span>`;
   const r=s.vsAvg;return `<span class="word">${r>=.05?"Above your average":r<=-.05?"Below your average":"On your average"}</span>`;
 }
-function strip(ms,idx,g){
-  const W=320,H=58,L=10,R=10,y=30;const vals=ms.slice(0,idx+1).map(g);const c=vals.filter(v=>v!=null);if(c.length<2)return "";
-  const lo=Math.min(...c),hi=Math.max(...c),X=v=>L+(hi>lo?(v-lo)/(hi-lo):.5)*(W-L-R);
-  const others=vals.slice(0,-1).filter(v=>v!=null),avg=others.length?mean(others):null;
-  const gd=gradDef(L,W-R);
-  let s=`<defs>${gd.def}</defs><line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="url(#${gd.id})" stroke-width="1.5" opacity=".55"/>`;
-  [0,.25,.5,.75,1].forEach(f=>{const x=L+f*(W-L-R);s+=`<line x1="${x}" x2="${x}" y1="${y+9}" y2="${y+13}" stroke="#77756F"/>`;});
-  vals.slice(0,-1).forEach((v,i)=>{if(v==null)return;s+=`<circle cx="${X(v).toFixed(1)}" cy="${y}" r="3.2" fill="#8F8D88" data-tip="${esc(sessLabel(ms[i]))}\n${fmt(v)}"/>`;});
-  if(avg!=null)s+=`<line x1="${X(avg).toFixed(1)}" x2="${X(avg).toFixed(1)}" y1="${y-10}" y2="${y+10}" stroke="${CREAM}" stroke-width="1" stroke-dasharray="2 2"/><text x="${X(avg).toFixed(1)}" y="${y+25}" text-anchor="middle" font-size="8.5" letter-spacing="2" fill="#A6A39D">AVG</text>`;
-  const cv=vals[vals.length-1];if(cv!=null){const cx=X(cv).toFixed(1);s+=`<circle cx="${cx}" cy="${y}" r="11" fill="url(#${gd.id})" opacity=".22"/><circle cx="${cx}" cy="${y}" r="6" fill="${CREAM}" stroke="#2A2A2A" stroke-width="2" data-tip="This match"/>`;}
-  s+=`<text x="${L}" y="${y-14}" font-size="8.5" letter-spacing="2" fill="#77756F">LOWEST</text><text x="${W-R}" y="${y-14}" text-anchor="end" font-size="8.5" letter-spacing="2" fill="#77756F">BEST</text>`;
-  return `<svg viewBox="0 0 ${W} ${H}" aria-label="Where this match sits in your season">${s}</svg>`;
-}
 function heroRadar(ms,idx){
   const ax=[["DISTANCE",x=>x.total_distance],["HSR",x=>x.hsr_19_8],["SPRINT",x=>x.sprint_distance],["ACCEL/DEC",x=>x.accel_decel_count],["TOP SPEED",x=>x.max_velocity],["WORK RATE",dpmOf]]
     .map(([l,g])=>{const s=stat(ms,g,idx);return s?{l,s}:null;}).filter(Boolean);
@@ -376,6 +397,21 @@ function heroRadar(ms,idx){
   P.forEach(p=>{g+=`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="${CREAM}"/>`;});
   return `<svg viewBox="0 0 340 320" width="340" role="img" aria-label="This match across your season range">${g}</svg>`;
 }
+function gradDef(x1,x2,y1=0,y2=0){const id="g"+(++GID);return {id,def:`<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"><stop offset="0" style="stop-color:var(--g1)"/><stop offset=".5" style="stop-color:var(--g2)"/><stop offset="1" style="stop-color:var(--g3)"/></linearGradient>`};}
+const S=(k,v)=>`style="${k}:var(--${v})"`;
+function strip(ms,idx,g){
+  const W=320,H=58,L=10,R=10,y=30;const vals=ms.slice(0,idx+1).map(g);const c=vals.filter(v=>v!=null);if(c.length<2)return "";
+  const lo=Math.min(...c),hi=Math.max(...c),X=v=>L+(hi>lo?(v-lo)/(hi-lo):.5)*(W-L-R);
+  const others=vals.slice(0,-1).filter(v=>v!=null),avg=others.length?mean(others):null;
+  const gd=gradDef(L,W-R);
+  let s=`<defs>${gd.def}</defs><line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="url(#${gd.id})" stroke-width="2" opacity=".7"/>`;
+  [0,.25,.5,.75,1].forEach(f=>{const x=L+f*(W-L-R);s+=`<line x1="${x}" x2="${x}" y1="${y+9}" y2="${y+13}" ${S("stroke","sv-dim")}/>`;});
+  vals.slice(0,-1).forEach((v,i)=>{if(v==null)return;s+=`<circle cx="${X(v).toFixed(1)}" cy="${y}" r="3.2" ${S("fill","sv-dot")} data-tip="${esc(sessLabel(ms[i]))}\n${fmt(v)}"/>`;});
+  if(avg!=null)s+=`<line x1="${X(avg).toFixed(1)}" x2="${X(avg).toFixed(1)}" y1="${y-10}" y2="${y+10}" ${S("stroke","sv-fg")} stroke-width="1" stroke-dasharray="2 2"/><text x="${X(avg).toFixed(1)}" y="${y+25}" text-anchor="middle" font-size="8.5" letter-spacing="2" ${S("fill","sv-muted")}>AVG</text>`;
+  const cv=vals[vals.length-1];if(cv!=null){const cx=X(cv).toFixed(1);s+=`<circle cx="${cx}" cy="${y}" r="11" ${S("fill","sv-halo")} opacity=".25"/><circle cx="${cx}" cy="${y}" r="6" ${S("fill","sv-cur")} style="fill:var(--sv-cur);stroke:var(--sv-bg)" stroke-width="2" data-tip="This match"/>`;}
+  s+=`<text x="${L}" y="${y-14}" font-size="8.5" letter-spacing="2" ${S("fill","sv-dim")}>LOWEST</text><text x="${W-R}" y="${y-14}" text-anchor="end" font-size="8.5" letter-spacing="2" ${S("fill","sv-dim")}>BEST</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" aria-label="Where this match sits in your season">${s}</svg>`;
+}
 function bigChart(ms,idx,mt){
   const vals=ms.map(mt.g),n=vals.length,W=900,H=420,L=200,R=40,T=40,B=86,CW=W-L-R,CH=H-T-B;
   const c=vals.filter(v=>v!=null);if(c.length<2)return `<p class="note">Builds after 2 matches.</p>`;
@@ -384,31 +420,69 @@ function bigChart(ms,idx,mt){
   const X=i=>PX+(n===1?PW/2:i/(n-1)*PW),Y=v=>T+CH-(v-lo)/(hi-lo)*CH;
   const gd=gradDef(PX,PX+PW);
   let s=`<defs>${gd.def}<filter id="glow${GID}" x="-5%" y="-30%" width="110%" height="160%"><feGaussianBlur stdDeviation="3"/></filter></defs>`;
-  // brackets
-  s+=`<path d="M${L+9},${T-20} H${L} V${T+CH+14} H${L+9}" fill="none" stroke="rgba(242,239,233,.6)"/><path d="M${W-R-9},${T-20} H${W-R} V${T+CH+14} H${W-R-9}" fill="none" stroke="rgba(242,239,233,.6)"/>`;
-  // grid
-  for(let k=0;k<5;k++){const y=T+k*CH/4;s+=`<line x1="${PX-14}" x2="${PX+PW+14}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="rgba(255,255,255,.16)"/>`;vals.forEach((_,i)=>{s+=`<circle cx="${X(i).toFixed(1)}" cy="${y.toFixed(1)}" r="1.3" fill="rgba(255,255,255,.35)"/>`;});}
-  // x ticks
-  vals.forEach((_,i)=>{s+=`<line x1="${X(i).toFixed(1)}" x2="${X(i).toFixed(1)}" y1="${T+CH+26}" y2="${T+CH+(i===idx?38:33)}" stroke="${i===idx?CREAM:"#77756F"}" stroke-width="${i===idx?1.5:1}"/>`;});
+  s+=`<path d="M${L+9},${T-20} H${L} V${T+CH+14} H${L+9}" fill="none" ${S("stroke","sv-br")}/><path d="M${W-R-9},${T-20} H${W-R} V${T+CH+14} H${W-R-9}" fill="none" ${S("stroke","sv-br")}/>`;
+  for(let k=0;k<5;k++){const y=T+k*CH/4;s+=`<line x1="${PX-14}" x2="${PX+PW+14}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" ${S("stroke","sv-grid")}/>`;vals.forEach((_,i)=>{s+=`<circle cx="${X(i).toFixed(1)}" cy="${y.toFixed(1)}" r="1.3" ${S("fill","sv-griddot")}/>`;});}
+  vals.forEach((_,i)=>{s+=`<line x1="${X(i).toFixed(1)}" x2="${X(i).toFixed(1)}" y1="${T+CH+26}" y2="${T+CH+(i===idx?38:33)}" ${S("stroke",i===idx?"sv-fg":"sv-dim")} stroke-width="${i===idx?1.5:1}"/>`;});
   const every=Math.max(1,Math.ceil(n/7));
-  vals.forEach((_,i)=>{if((i%every||Math.abs(i-idx)<every)&&i!==idx)return;s+=`<text x="${X(i).toFixed(1)}" y="${T+CH+54}" text-anchor="middle" font-size="10" letter-spacing="1.5" fill="${i===idx?CREAM:"#8F8D88"}">${esc(short(sessLabel(ms[i])).toUpperCase().slice(0,12))}</text>`;});
-  // y label & x label
+  vals.forEach((_,i)=>{if((i%every||Math.abs(i-idx)<every)&&i!==idx)return;s+=`<text x="${X(i).toFixed(1)}" y="${T+CH+54}" text-anchor="middle" font-size="10" letter-spacing="1.5" ${S("fill",i===idx?"sv-fg":"sv-muted")}>${esc(short(sessLabel(ms[i])).toUpperCase().slice(0,12))}</text>`;});
   const words=mt.l.toUpperCase().split(" ");const mid=T+CH/2-(words.length-1)*11;
-  s+=words.map((w,i)=>`<text x="${L-34}" y="${(mid+i*22+6).toFixed(1)}" text-anchor="end" font-size="17" letter-spacing="4" fill="${CREAM}" font-weight="300">${w}</text>`).join("");
-  s+=`<text x="${L-34}" y="${(mid+words.length*22+8).toFixed(1)}" text-anchor="end" font-size="10" letter-spacing="2" fill="#77756F">${mt.u.toUpperCase()||"COUNT"}</text>`;
-  s+=`<text x="${PX+PW/2}" y="${H-6}" text-anchor="middle" font-size="16" letter-spacing="4" fill="${CREAM}" font-weight="300">MATCH BY MATCH</text>`;
-  // avg
-  const avg=mean(c);s+=`<line x1="${PX-14}" x2="${PX+PW+14}" y1="${Y(avg).toFixed(1)}" y2="${Y(avg).toFixed(1)}" stroke="${CREAM}" stroke-width="1" stroke-dasharray="2 4" opacity=".7"/><text x="${PX-14}" y="${(Y(avg)+16).toFixed(1)}" font-size="9" letter-spacing="2" fill="#A6A39D">SEASON AVG</text>`;
-  // line
+  s+=words.map((w,i)=>`<text x="${L-34}" y="${(mid+i*22+6).toFixed(1)}" text-anchor="end" font-size="17" letter-spacing="4" ${S("fill","sv-fg")} font-weight="300">${w}</text>`).join("");
+  s+=`<text x="${L-34}" y="${(mid+words.length*22+8).toFixed(1)}" text-anchor="end" font-size="10" letter-spacing="2" ${S("fill","sv-dim")}>${mt.u.toUpperCase()||"COUNT"}</text>`;
+  s+=`<text x="${PX+PW/2}" y="${H-6}" text-anchor="middle" font-size="16" letter-spacing="4" ${S("fill","sv-fg")} font-weight="300">MATCH BY MATCH</text>`;
+  const avg=mean(c);s+=`<line x1="${PX-14}" x2="${PX+PW+14}" y1="${Y(avg).toFixed(1)}" y2="${Y(avg).toFixed(1)}" ${S("stroke","sv-fg")} stroke-width="1" stroke-dasharray="2 4" opacity=".6"/><text x="${PX-14}" y="${(Y(avg)+16).toFixed(1)}" font-size="9" letter-spacing="2" ${S("fill","sv-muted")}>SEASON AVG</text>`;
   const pts=vals.map((v,i)=>v==null?null:[X(i),Y(v)]).filter(Boolean);const d=smooth(pts);
-  s+=`<path d="${d}" fill="none" stroke="url(#${gd.id})" stroke-width="7" opacity=".25" filter="url(#glow${GID})"/><path d="${d}" fill="none" stroke="url(#${gd.id})" stroke-width="3.5" stroke-linecap="round"/>`;
+  s+=`<path d="${d}" fill="none" stroke="url(#${gd.id})" stroke-width="7" opacity=".22" filter="url(#glow${GID})"/><path d="${d}" fill="none" stroke="url(#${gd.id})" stroke-width="3.5" stroke-linecap="round"/>`;
   const bi=vals.indexOf(Math.max(...c));
   vals.forEach((v,i)=>{if(v==null)return;s+=`<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="12" fill="transparent" data-tip="${esc(sessLabel(ms[i]))} · ${fdate(ms[i].date)}\n${fmt(v,mt.d)} ${mt.u}${i===bi?"\nSeason best":""}"/>`;});
-  if(bi!==idx)s+=`<text x="${X(bi).toFixed(1)}" y="${(Y(vals[bi])-16).toFixed(1)}" text-anchor="middle" font-size="9" letter-spacing="2" fill="#A6A39D">BEST</text>`;
-  if(vals[idx]!=null){const cx=X(idx),cy=Y(vals[idx]);s+=`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="16" fill="${CREAM}" opacity=".12"/><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="6.5" fill="${CREAM}" stroke="#2A2A2A" stroke-width="2.5" pointer-events="none"/>`;
-    const anc=idx>n*.8?"end":idx<n*.2?"start":"middle";s+=`<text x="${cx.toFixed(1)}" y="${(cy-24).toFixed(1)}" text-anchor="${anc}" font-size="15" fill="${CREAM}" font-weight="300">${fmt(vals[idx],mt.d)} <tspan font-size="9" letter-spacing="2" fill="#A6A39D">${mt.u.toUpperCase()}</tspan></text>`;}
+  if(bi!==idx)s+=`<text x="${X(bi).toFixed(1)}" y="${(Y(vals[bi])-16).toFixed(1)}" text-anchor="middle" font-size="9" letter-spacing="2" ${S("fill","sv-muted")}>BEST</text>`;
+  if(vals[idx]!=null){const cx=X(idx),cy=Y(vals[idx]);s+=`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="16" ${S("fill","sv-halo")} opacity=".18"/><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="6.5" style="fill:var(--sv-cur);stroke:var(--sv-bg)" stroke-width="2.5" pointer-events="none"/>`;
+    const anc=idx>n*.8?"end":idx<n*.2?"start":"middle";s+=`<text x="${cx.toFixed(1)}" y="${(cy-24).toFixed(1)}" text-anchor="${anc}" font-size="15" ${S("fill","sv-fg")} font-weight="300">${fmt(vals[idx],mt.d)} <tspan font-size="9" letter-spacing="2" ${S("fill","sv-muted")}>${mt.u.toUpperCase()}</tspan></text>`;}
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(mt.l)} by match">${s}</svg>`;
 }
+/* ---- Hintsa-style section furniture ---- */
+const ICON={
+  demands:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />',
+  match:'<path d="M3 8h14l-4-4M21 16H7l4 4" />',
+  season:'<path d="M3 17c4 0 4-9 8-9s4 6 8 6 2-4 2-4" />',
+  speed:'<path d="M13 2 4 14h7l-1 8 9-12h-7z" />',
+  bests:'<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" />',
+};
+const ico=k=>`<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
+const BULB='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.2h5c0-.9.4-1.7 1.1-2.2A6 6 0 0 0 12 3z"/></svg>';
+const tipBox=t=>t?`<div class="tipb">${BULB}<p>${t}</p></div>`:"";
+const secHead=(k,eb,title,intro)=>`<div class="shead">${ico(k)}<span class="eb">${eb}</span></div><h2 class="h2">${title}</h2>${intro?`<p class="intro">${intro}</p>`:""}`;
+const lc=s=>s.charAt(0).toLowerCase()+s.slice(1);
+const joinW=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length-1];
+function demandTip(ms,idx,core){
+  const st=core.map(x=>({x,s:stat(ms,x.g,idx)})).filter(o=>o.s&&o.s.n>1);
+  const best=st.filter(o=>o.s.rank===1).map(o=>lc(o.x.l)),above=st.filter(o=>o.s.rank!==1&&o.s.vsAvg>=.05).map(o=>lc(o.x.l));
+  const m=ms[idx],mins=ms.slice(0,idx).map(x=>x.total_duration_min).filter(v=>v!=null),am=mins.length?mean(mins):null;
+  let t=best.length?`Season best for <b>${joinW(best)}</b>.`:above.length?`Above your average for <b>${joinW(above)}</b>.`:`A match close to your usual numbers.`;
+  if(best.length&&above.length)t+=` ${joinW(above).replace(/^./,c=>c.toUpperCase())} ${above.length>1?"were":"was"} above your average too.`;
+  if(am!=null&&m.total_duration_min!=null&&m.total_duration_min<am-10)t+=` You played fewer minutes than usual, so lower totals are expected. Intensity is the fairest number to look at.`;
+  return t;
+}
+function compareTip(prev,m,core){
+  const ch=core.map(x=>{const a=x.g(prev),b=x.g(m);return (a&&b!=null)?{x,r:b/a-1}:null;}).filter(Boolean).sort((a,b)=>b.r-a.r);
+  let t=ch.length&&ch[0].r>.02?`Your biggest step up from ${esc(short(sessLabel(prev)))} was in <b>${lc(ch[0].x.l)}</b>.`:`Similar or slightly lower numbers than ${esc(short(sessLabel(prev)))}.`;
+  const d=(m.total_duration_min!=null&&prev.total_duration_min!=null)?Math.round(m.total_duration_min-prev.total_duration_min):0;
+  if(Math.abs(d)>=10)t+=` You played ${Math.abs(d)} ${d>0?"more":"fewer"} minutes, so intensity is the fairest comparison.`;
+  return t;
+}
+function seasonTip(ms,idx,mt){
+  const s=stat(ms,mt.g,idx);if(!s||s.n<2)return "";
+  let t=s.rank===1?`This was your <b>best ${lc(mt.l)}</b> of the season.`:`This was your <b>${ord(s.rank)} best ${lc(mt.l)}</b> from ${s.n} matches.`;
+  const v=ms.slice(Math.max(0,idx-3),idx+1).map(mt.g).filter(x=>x!=null);
+  if(v.length>=4){const sl=linreg(v),mm=mean(v)||1,p=sl*(v.length-1)/mm;t+=p>.06?" It has been climbing over your last four matches.":p<-.06?" It has dipped a little over your last four matches.":" It has held steady over your last four matches.";}
+  return t;
+}
+function linreg(ys){const n=ys.length,mx=(n-1)/2,my=mean(ys);let a=0,b=0;ys.forEach((y,i)=>{a+=(i-mx)*(y-my);b+=(i-mx)**2;});return b?a/b:0;}
+function speedTip(upto){
+  const l3=upto.slice(-3).map(x=>x.max_vel_pct).filter(v=>v!=null);const hit=l3.filter(v=>v>=90).length;
+  if(!l3.length)return "";
+  return hit?`You reached 90%+ in ${hit} of your last ${l3.length} matches. Aim to touch it at least once every week, in a match or in training.`:`Your last ${l3.length} matches stayed under 90% of your max. Aim to touch it at least once every week, in a match or in training.`;
+}
+function sheetify(html){let i=0;return html.replace(/<section class="sec( first)?">/g,()=>`<section class="sheet ${(i++%2)?"dark":"light"}"><div class="wrap">`).replace(/<\/section>/g,"</div></section>").replace('<details class="raw">',`<section class="sheet ${(i%2)?"dark":"light"} rawsheet"><div class="wrap"><details class="raw">`).replace(/<\/details>$/,"</details></div></section>");}
 function headline(ms,idx){
   const m=ms[idx],dist=m.total_distance,mins=m.total_duration_min;
   let s=`You covered <b>${dist!=null?fmt(dist/1000,1)+" km":"—"}</b>${mins!=null?` in <b>${fmt(mins)} minutes</b>`:""}${m.hsr_19_8!=null?`, with <b>${fmt(m.hsr_19_8)} m</b> of high-speed running`:""}.`;
@@ -442,38 +516,39 @@ function render(){
   const bestCards=CORE.filter(x=>["dist","hsr","spr","vmax"].includes(x.k)&&upto.some(r=>x.g(r)!=null)).map(x=>{let b=null,bi=-1;upto.forEach((r,i)=>{const v=x.g(r);if(v!=null&&(b==null||v>b)){b=v;bi=i;}});return {x,v:b,r:upto[bi],now:bi===idx&&idx>0};});
   const bigOpts=core.filter(x=>["dist","hsr","spr","vmax","hpm"].includes(x.k));const mt=bigOpts.find(x=>x.k===BIG)||bigOpts[0];
 
-  $("main").innerHTML=`
-  <section class="sec first"><div class="eb">Match demands</div><h2 class="h2">Your numbers ${esc(opp(m))}</h2>
-    <p class="lead">Each line runs from your lowest to your best match this season. The bright dot is this match.</p>
+  $("main").innerHTML=sheetify(`
+  <section class="sec first">${secHead("demands","Match demands",`Your numbers ${esc(opp(m))}`,"Each line runs from your lowest to your best match this season. The bright dot is this match.")}
     <div class="tiles">${core.map(x=>{const s=stat(ms,x.g,idx);if(!s)return "";return `<div class="tile br"><div class="eb">${x.l}</div><div class="v">${fmt(s.cur,x.d)}<small>${x.u.toUpperCase()}</small></div>${word(s)}${strip(ms,idx,x.g)}</div>`;}).join("")}</div>
-    <div class="keyrow"><span><i><svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="${CREAM}"/></svg></i>This match</span><span><i><svg width="10" height="10"><circle cx="5" cy="5" r="3" fill="#8F8D88"/></svg></i>Other matches</span><span><i><svg width="4" height="14"><line x1="2" x2="2" y1="0" y2="14" stroke="${CREAM}" stroke-dasharray="2 2"/></svg></i>Your average</span></div>
+    <div class="keyrow"><span><i class="kd cur"></i>This match</span><span><i class="kd"></i>Other matches</span><span><i class="ka"></i>Your average</span></div>
+    ${tipBox(demandTip(ms,idx,core))}
   </section>
 
-  ${prev?`<section class="sec"><div class="eb">Match to match</div><h2 class="h2">Compared with your last match ${esc(opp(prev))}</h2>
-    <div class="br" style="margin-top:28px"><div class="cleg"><span><i style="height:2px;background:#5E5C58"></i>${esc(sessLabel(prev))}</span><span><i style="height:5px;border-radius:3px;background:var(--grad)"></i>${esc(sessLabel(m))}</span></div>
+  ${prev?`<section class="sec">${secHead("match","Match to match",`Compared with your last match ${esc(opp(prev))}`,"")}
+    <div class="cmpbox"><div class="cleg"><span><i class="lp"></i>${esc(sessLabel(prev))}</span><span><i class="ln2"></i>${esc(sessLabel(m))}</span></div>
     ${[{l:"Minutes",g:x=>x.total_duration_min,u:"min",d:0}].concat(core).map(x=>{const a=x.g(prev),b=x.g(m);if(a==null||b==null)return "";
       const best=Math.max(...ms.map(x.g).filter(v=>v!=null)),pa=a/best*72,pb=b/best*72,up=b>a*1.005,dn=b<a*.995;
       return `<div class="crow"><div class="lab">${x.l}</div><div class="bars"><div class="bar prev"><i style="width:${pa.toFixed(1)}%"></i><span style="left:${pa.toFixed(1)}%">${fmt(a,x.d)}</span></div><div class="bar now"><i style="width:${pb.toFixed(1)}%"></i><span style="left:${pb.toFixed(1)}%">${fmt(b,x.d)} <small style="color:var(--dim);letter-spacing:.12em">${x.u.toUpperCase()}</small></span></div></div><div class="arr ${up?"up":""}">${up?"▲":dn?"▼":"="}</div></div>`;}).join("")}
-    </div></section>`:""}
+    </div>${tipBox(compareTip(prev,m,core))}</section>`:""}
 
-  <section class="sec"><div class="eb">Your season</div><h2 class="h2">How your season is building</h2>
+  <section class="sec">${secHead("season","Your season","How your season is building","Every match so far this season, one line per metric. Pick a metric to see where this match sits.")}
     <div class="tabsm">${bigOpts.map(x=>`<button data-big="${x.k}" aria-pressed="${x.k===mt.k}">${x.l}</button>`).join("")}</div>
     <div class="bigc">${bigChart(ms,idx,mt)}</div>
+    ${tipBox(seasonTip(ms,idx,mt))}
   </section>
 
-  ${hasVp?`<section class="sec"><div class="eb">Speed</div><h2 class="h2">Reaching top speed</h2>
-    <p class="lead">Hitting 90% or more of your max speed keeps you quick and protects your hamstrings. A filled circle means you got there in that match.</p>
+  ${hasVp?`<section class="sec">${secHead("speed","Speed","Reaching top speed","Hitting 90% or more of your max speed keeps you quick and protects your hamstrings. A filled circle means you got there in that match.")}
     <div class="speedRow"><div class="br"><div class="eb">Matches at 90%+</div><div style="font-size:52px;font-weight:200;line-height:1;margin-top:14px">${exp}<span style="font-size:15px;color:var(--muted);margin-left:8px">/ ${expN}</span></div>${topRow?`<div class="word" style="margin-top:14px">Fastest · <span style="color:var(--ink)">${fmt(topRow.max_velocity,1)} km/h</span></div>`:""}</div>
     <div class="br" style="display:flex;flex-direction:column;justify-content:center"><div class="dots">${upto.map((x,i)=>`<div class="sd${x.max_vel_pct!=null&&x.max_vel_pct>=90?" hit":""}${i===idx?" cur":""}" data-tip="${esc(sessLabel(x))} · ${fdate(x.date)}\n${x.max_vel_pct!=null?fmt(x.max_vel_pct)+"% of max":"no data"}">${i+1}</div>`).join("")}</div><p class="note">Match 1 to ${idx+1}. The ringed circle is this match.</p></div></div>
+    ${tipBox(speedTip(upto))}
   </section>`:""}
 
-  <section class="sec"><div class="eb">Season bests</div><h2 class="h2">Your numbers to beat</h2>
+  <section class="sec">${secHead("bests","Season bests","Your numbers to beat","")}
     <div class="bests">${bestCards.map(o=>`<div class="bst br">${o.now?`<span class="new">★ New this match</span>`:`<span class="eb" style="font-size:9.5px">${o.x.l}</span>`}${o.now?`<span class="eb" style="font-size:9.5px">${o.x.l}</span>`:""}<b>${fmt(o.v,o.x.d)}<small>${o.x.u.toUpperCase()}</small></b><span>${esc(sessLabel(o.r))}</span></div>`).join("")}</div>
   </section>
 
   <details class="raw"><summary>Show all match data</summary><div class="tblwrap"><table class="log"><thead><tr><th>Match</th><th>Min</th><th>Distance</th><th>HSR</th><th>Sprint</th><th>Top speed</th></tr></thead><tbody>
     ${ms.map((x,i)=>({x,i})).reverse().map(({x,i})=>`<tr class="${i===idx?"cur":""}"><td>${esc(sessLabel(x))} <span style="color:var(--dim);font-size:12px">${fdate(x.date)}</span></td><td>${fmt(x.total_duration_min)}</td><td>${fmt(x.total_distance)}</td><td>${fmt(x.hsr_19_8)}</td><td>${fmt(x.sprint_distance)}</td><td>${fmt(x.max_velocity,1)}</td></tr>`).join("")}
-  </tbody></table></div></details>`;
+  </tbody></table></div></details>`);
   const coachN=($("coachName").value||"").trim();$("footCoach").textContent=coachN?"Physical Performance Coach · "+coachN:"Individual physical performance coaching";
 }
 function emptyView(){
@@ -517,7 +592,7 @@ window.addEventListener("hashchange",()=>{fromHash();MIDX=null;render();});
 $("btnPrint").addEventListener("click",()=>{try{window.print()}catch(e){}});
 $("btnPrintAll").addEventListener("click",()=>{
   const keep=SEL,keepM=MIDX,pages=[];
-  DATA.players.slice().sort().forEach(p=>{SEL=p;MIDX=null;render();pages.push(`<div class="ppage"><header class="hero"><div class="wrap">${document.querySelector(".topbar").outerHTML}${$("heroBody").innerHTML}</div></header><main class="wrap">${$("main").innerHTML}</main></div>`);});
+  DATA.players.slice().sort().forEach(p=>{SEL=p;MIDX=null;render();pages.push(`<div class="ppage"><header class="hero"><div class="wrap">${document.querySelector(".topbar").outerHTML}${$("heroBody").innerHTML}</div></header><main>${$("main").innerHTML}</main></div>`);});
   $("printAll").innerHTML=pages.join("");document.body.classList.add("pall");SEL=keep;MIDX=keepM;render();
   setTimeout(()=>{try{window.print()}catch(e){}},80);
 });
