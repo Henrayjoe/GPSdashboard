@@ -152,7 +152,7 @@ footer img{height:14px;width:auto;display:block}
 #tip{position:fixed;pointer-events:none;background:#F2EFE9;color:#1d1d1d;font-size:12px;line-height:1.45;padding:8px 11px;max-width:240px;z-index:90;opacity:0;transition:opacity .1s;white-space:pre-line}
 #tip.on{opacity:1}
 
-@media (max-width:820px){
+@media screen and (max-width:820px){
   .heroGrid,.speedRow,.slots{grid-template-columns:1fr}
   .tiles{grid-template-columns:1fr}
   .bests{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -210,9 +210,64 @@ footer img{height:14px;width:auto;display:block}
 .rawsheet details.raw{margin-top:0;border-top:0;padding-top:0}
 .data{border-top:0;margin-top:0}
 .sheet + section .data, #main + section{position:relative}
-@media (max-width:820px){.sheet{border-radius:22px 22px 0 0;margin-top:-22px;padding:44px 0 64px}.sheet .h2{font-size:27px}.intro{font-size:17px}}
+@media screen and (max-width:820px){.sheet{border-radius:22px 22px 0 0;margin-top:-22px;padding:44px 0 64px}.sheet .h2{font-size:27px}.intro{font-size:17px}}
 @media print{.rawsheet{display:none!important}.sheet{box-shadow:none;break-inside:auto}.tipb{break-inside:avoid}.sheet{padding:40px 0 56px}}
 
+
+/* ===== PDF: fixed A4 pages ===== */
+@page{size:A4;margin:0}
+@media print{
+  html,body{background:#2A2A2A!important;margin:0}
+  body.pall #app,#tip{display:none!important}
+  body.pall #printAll{display:block!important}
+  .ppage{width:210mm;height:297mm;display:flex;flex-direction:column;overflow:hidden;break-after:page;page-break-after:always;background:#2A2A2A;position:relative}
+  .ppage:last-child{break-after:auto;page-break-after:auto}
+  .ppage .wrap{max-width:none;padding-left:36px;padding-right:36px}
+  .ppage .topbar{padding-bottom:14px}.ppage .logo img{height:18px}
+  .phdr{font-size:9.5px;letter-spacing:.24em;text-transform:uppercase;color:#A6A39D}
+  .ppage .hero .wrap{padding-top:24px;padding-bottom:52px}
+  .ppage .heroGrid{grid-template-columns:minmax(0,1fr) 230px!important;gap:16px;margin-top:22px}
+  .ppage .hero h1{font-size:40px;margin-top:10px}
+  .ppage .hero .sub{font-size:14px;margin-top:10px;line-height:1.5}
+  .ppage .meta{margin-top:18px;gap:22px;flex-wrap:nowrap}.ppage .meta b{font-size:18px}.ppage .meta span{font-size:8.5px;letter-spacing:.2em;white-space:nowrap}
+  .ppage .rBox svg{width:230px}.ppage .rleg{font-size:8.5px}
+  .ppage .sheet{margin-top:-24px;border-radius:24px 24px 0 0;padding:28px 0 30px;box-shadow:0 -8px 18px rgba(0,0,0,.25);break-inside:auto}
+  .ppage .sheet.grow{flex:1 1 auto}
+  .ppage .sheet .h2{font-size:23px;margin-top:8px}
+  .ppage .shead .ico{width:20px;height:20px}
+  .ppage .intro{font-size:13px;margin-top:6px;max-width:none}
+  .ppage .tiles{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px;margin-top:16px}
+  .ppage .br{padding:14px 18px}
+  .ppage .tile .v{font-size:32px;margin-top:8px}
+  .ppage .tiles{row-gap:16px}
+  .ppage .sheet.grow .tiles{margin-top:22px}.ppage .tile .eb{font-size:9px}
+  .ppage .word{font-size:9px;margin-top:4px}
+  .ppage .tile svg{margin-top:4px}
+  .ppage .keyrow{margin-top:10px;font-size:8.5px}
+  .ppage .tipb{margin-top:14px;padding:11px 16px;grid-template-columns:22px minmax(0,1fr);gap:12px}.ppage .tipb p{font-size:12px}.ppage .tipb svg{width:18px;height:18px}
+  .ppage .cmpbox{margin-top:12px}.ppage .cleg{font-size:8.5px}
+  .ppage .crow{padding:7px 0;grid-template-columns:150px minmax(0,1fr) 30px}.ppage .crow .lab{font-size:9px}.ppage .arr{width:24px;height:24px;font-size:8px}
+  .ppage .bar span{font-size:10.5px}.ppage .bar.now span{font-size:11px}
+  .ppage .tabsm{display:none}
+  .ppage .bigc svg{margin-top:4px;max-height:290px}
+  .ppage .bigc.spc svg{margin-top:14px;max-height:270px}
+  .ppage .sheet.grow .tile .v{font-size:38px}
+  .ppage .sheet.grow .tiles{grid-auto-rows:222px;row-gap:16px}
+  .ppage .sheet.grow .tile{justify-content:space-between}
+  .ppage .sheet.grow .tile svg{margin-top:auto}
+  .ppage .sheet.grow .keyrow{margin-top:16px}
+  .ppage .sheet.grow .tipb{margin-top:22px}
+  .ppage .sheet.grow .br{padding:20px 20px}
+  .ppage .sheet.grow .intro{font-size:14px}
+  .ppage .hero .wrap{padding-bottom:60px}
+  .ppage .speedRow{grid-template-columns:190px minmax(0,1fr)!important;gap:16px;margin-top:14px}
+  .ppage .bests{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:12px;margin-top:14px}
+  .ppage .bst b{font-size:24px}
+  .ppage .gline{margin-top:0}.ppage footer{padding:14px 0 16px;background:#2A2A2A}
+  .runhdr{background:#2A2A2A;padding:18px 0 46px}
+  .runhdr .wrap{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:#A6A39D}
+  .runhdr .logo img{height:14px}
+}
 </style>
 </head>
 <body>
@@ -367,7 +422,7 @@ function smooth(pts,t=.13){if(pts.length<2)return "";if(pts.length===2)return `M
     const c1=[p1[0]+(p2[0]-p0[0])*t,p1[1]+(p2[1]-p0[1])*t],c2=[p2[0]-(p3[0]-p1[0])*t,p2[1]-(p3[1]-p1[1])*t];
     d+=`C${c1[0].toFixed(1)},${c1[1].toFixed(1)} ${c2[0].toFixed(1)},${c2[1].toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;}
   return d;}
-function opp(m){const s=sessLabel(m);return /^(vs|v)\s+/i.test(s)?"against "+s.replace(/^(vs|v)\s+/i,""):/^at\s+/i.test(s)?"away at "+s.replace(/^at\s+/i,""):"from "+s;}
+function opp(m){if(!((m.session_name||"").trim()||(m.session_type||"").trim()))return "on "+fdate(m.date);const s=sessLabel(m);return /^(vs|v)\s+/i.test(s)?"against "+s.replace(/^(vs|v)\s+/i,""):/^at\s+/i.test(s)?"away at "+s.replace(/^at\s+/i,""):"from "+s;}
 const short=s=>(""+s).replace(/^(vs|at|v)\s+/i,"");
 const CORE=[
   {k:"dist",l:"Total distance",g:x=>x.total_distance,u:"m",d:0},
@@ -415,7 +470,7 @@ function strip(ms,idx,g){
 function bigChart(ms,idx,mt){
   const vals=ms.map(mt.g),n=vals.length,W=900,H=420,L=200,R=40,T=40,B=86,CW=W-L-R,CH=H-T-B;
   const c=vals.filter(v=>v!=null);if(c.length<2)return `<p class="note">Builds after 2 matches.</p>`;
-  let lo=Math.min(...c),hi=Math.max(...c);const pad=(hi-lo)*.25||1;lo-=pad;hi+=pad;
+  let lo=Math.min(...c),hi=Math.max(...c);if(mt.ref!=null){lo=Math.min(lo,mt.ref);hi=Math.max(hi,mt.ref);}const pad=(hi-lo)*.25||1;lo-=pad;hi+=pad;
   const PX=L+30,PW=CW-60;
   const X=i=>PX+(n===1?PW/2:i/(n-1)*PW),Y=v=>T+CH-(v-lo)/(hi-lo)*CH;
   const gd=gradDef(PX,PX+PW);
@@ -430,6 +485,7 @@ function bigChart(ms,idx,mt){
   s+=`<text x="${L-34}" y="${(mid+words.length*22+8).toFixed(1)}" text-anchor="end" font-size="10" letter-spacing="2" ${S("fill","sv-dim")}>${mt.u.toUpperCase()||"COUNT"}</text>`;
   s+=`<text x="${PX+PW/2}" y="${H-6}" text-anchor="middle" font-size="16" letter-spacing="4" ${S("fill","sv-fg")} font-weight="300">MATCH BY MATCH</text>`;
   const avg=mean(c);s+=`<line x1="${PX-14}" x2="${PX+PW+14}" y1="${Y(avg).toFixed(1)}" y2="${Y(avg).toFixed(1)}" ${S("stroke","sv-fg")} stroke-width="1" stroke-dasharray="2 4" opacity=".6"/><text x="${PX-14}" y="${(Y(avg)+16).toFixed(1)}" font-size="9" letter-spacing="2" ${S("fill","sv-muted")}>SEASON AVG</text>`;
+  if(mt.ref!=null)s+=`<line x1="${PX-14}" x2="${PX+PW+14}" y1="${Y(mt.ref).toFixed(1)}" y2="${Y(mt.ref).toFixed(1)}" style="stroke:var(--g1)" stroke-width="1.5" stroke-dasharray="6 5"/><text x="${PX+PW+14}" y="${(Y(mt.ref)-8).toFixed(1)}" text-anchor="end" font-size="9" letter-spacing="2" style="fill:var(--g1)">${mt.ref}% LINE</text>`;
   const pts=vals.map((v,i)=>v==null?null:[X(i),Y(v)]).filter(Boolean);const d=smooth(pts);
   s+=`<path d="${d}" fill="none" stroke="url(#${gd.id})" stroke-width="7" opacity=".22" filter="url(#glow${GID})"/><path d="${d}" fill="none" stroke="url(#${gd.id})" stroke-width="3.5" stroke-linecap="round"/>`;
   const bi=vals.indexOf(Math.max(...c));
@@ -450,7 +506,7 @@ const ICON={
 const ico=k=>`<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
 const BULB='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.2h5c0-.9.4-1.7 1.1-2.2A6 6 0 0 0 12 3z"/></svg>';
 const tipBox=t=>t?`<div class="tipb">${BULB}<p>${t}</p></div>`:"";
-const secHead=(k,eb,title,intro)=>`<div class="shead">${ico(k)}<span class="eb">${eb}</span></div><h2 class="h2">${title}</h2>${intro?`<p class="intro">${intro}</p>`:""}`;
+const secHead=(k,eb,title,intro)=>`<div class="shead" data-k="${k}">${ico(k)}<span class="eb">${eb}</span></div><h2 class="h2">${title}</h2>${intro?`<p class="intro">${intro}</p>`:""}`;
 const lc=s=>s.charAt(0).toLowerCase()+s.slice(1);
 const joinW=a=>a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length-1];
 function demandTip(ms,idx,core){
@@ -539,6 +595,7 @@ function render(){
   ${hasVp?`<section class="sec">${secHead("speed","Speed","Reaching top speed","Hitting 90% or more of your max speed keeps you quick and protects your hamstrings. A filled circle means you got there in that match.")}
     <div class="speedRow"><div class="br"><div class="eb">Matches at 90%+</div><div style="font-size:52px;font-weight:200;line-height:1;margin-top:14px">${exp}<span style="font-size:15px;color:var(--muted);margin-left:8px">/ ${expN}</span></div>${topRow?`<div class="word" style="margin-top:14px">Fastest · <span style="color:var(--ink)">${fmt(topRow.max_velocity,1)} km/h</span></div>`:""}</div>
     <div class="br" style="display:flex;flex-direction:column;justify-content:center"><div class="dots">${upto.map((x,i)=>`<div class="sd${x.max_vel_pct!=null&&x.max_vel_pct>=90?" hit":""}${i===idx?" cur":""}" data-tip="${esc(sessLabel(x))} · ${fdate(x.date)}\n${x.max_vel_pct!=null?fmt(x.max_vel_pct)+"% of max":"no data"}">${i+1}</div>`).join("")}</div><p class="note">Match 1 to ${idx+1}. The ringed circle is this match.</p></div></div>
+    <div class="bigc spc">${bigChart(ms.slice(0,idx+1),idx,{l:"Top speed",g:x=>x.max_vel_pct,u:"% of max",d:0,ref:90})}</div>
     ${tipBox(speedTip(upto))}
   </section>`:""}
 
@@ -589,13 +646,27 @@ document.addEventListener("pointermove",e=>{if(!tip.classList.contains("on"))ret
 function setHash(){try{history.replaceState(null,"","#player-"+slug(SEL));}catch(e){}}
 function fromHash(){const h=(location.hash||"").slice(1);if(h.startsWith("player-")){const p=DATA.players.find(x=>slug(x)===h.slice(7));if(p)SEL=p;}}
 window.addEventListener("hashchange",()=>{fromHash();MIDX=null;render();});
-$("btnPrint").addEventListener("click",()=>{try{window.print()}catch(e){}});
-$("btnPrintAll").addEventListener("click",()=>{
-  const keep=SEL,keepM=MIDX,pages=[];
-  DATA.players.slice().sort().forEach(p=>{SEL=p;MIDX=null;render();pages.push(`<div class="ppage"><header class="hero"><div class="wrap">${document.querySelector(".topbar").outerHTML}${$("heroBody").innerHTML}</div></header><main>${$("main").innerHTML}</main></div>`);});
-  $("printAll").innerHTML=pages.join("");document.body.classList.add("pall");SEL=keep;MIDX=keepM;render();
-  setTimeout(()=>{try{window.print()}catch(e){}},80);
-});
+let PRINTN=0;
+function printHtml(players){
+  const keep=[SEL,MIDX],logo=document.querySelector(".topbar .logo").innerHTML,foot=`<div class="gline"></div>`+document.querySelector("footer").outerHTML;let out="";
+  players.forEach(p=>{SEL=p;MIDX=p===keep[0]?keep[1]:null;render();
+    const ms=matchesOf(SEL),m=ms[MIDX];
+    const by={};document.querySelectorAll("#main > section.sheet").forEach(s=>{const h=s.querySelector(".shead");if(h)by[h.dataset.k]=s.outerHTML;});
+    const run=`<div class="runhdr"><div class="wrap"><div class="logo">${logo}</div><span>${esc(SEL)} · ${esc(sessLabel(m))} · ${fdateL(m.date)}</span></div></div>`;
+    const grow=h=>{const i=h.lastIndexOf('<section class="sheet ');return i<0?h:h.slice(0,i)+'<section class="sheet grow '+h.slice(i+22);};
+    const pages=[
+      `<header class="hero"><div class="wrap"><div class="topbar"><div class="logo">${logo}</div><span class="phdr">GPS match report</span></div>${$("heroBody").innerHTML}</div></header>`+grow(by.demands||""),
+      run+grow((by.match||"")+(by.season||"")),
+      run+grow((by.speed||"")+(by.bests||""))+foot,
+    ];
+    const pre="p"+(++PRINTN)+"_";out+=pages.map(h=>`<div class="ppage">${h}</div>`).join("").replace(/id="(g|glow)(\d+)"/g,`id="${pre}$1$2"`).replace(/url\(#(g|glow)(\d+)\)/g,`url(#${pre}$1$2)`);
+  });
+  SEL=keep[0];MIDX=keep[1];render();return out;
+}
+function doPrint(players){$("printAll").innerHTML=printHtml(players);document.body.classList.add("pall");setTimeout(()=>{try{window.print()}catch(e){}},80);}
+$("btnPrint").addEventListener("click",()=>doPrint([SEL]));
+$("btnPrintAll").addEventListener("click",()=>doPrint(DATA.players.slice().sort()));
+window.addEventListener("beforeprint",()=>{if(!document.body.classList.contains("pall")&&DATA.players.length){$("printAll").innerHTML=printHtml([SEL]);document.body.classList.add("pall");}});
 window.addEventListener("afterprint",()=>{document.body.classList.remove("pall");$("printAll").innerHTML="";});
 
 /* ================= Google Sheet sync ================= */
