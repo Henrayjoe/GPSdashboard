@@ -6,6 +6,7 @@
 <title>FootballFit GPS Match Report</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
   --bg:#2A2A2A; --bg2:#242424; --ink:#F2EFE9; --muted:#A6A39D; --dim:#77756F; --rule:rgba(255,255,255,.14); --rule2:rgba(255,255,255,.07);
@@ -188,6 +189,7 @@ footer img{height:14px;width:auto;display:block}
       <div class="ctrls">
         <select class="hsel" id="pSel" aria-label="Player"></select>
         <select class="hsel" id="mSel" aria-label="Match"></select>
+        <button class="hbtn" id="btnSyncTop" type="button">Sync</button>
         <button class="hbtn" id="btnPrint" type="button" hidden>Save PDF</button>
         <button class="hbtn" id="btnPrintAll" type="button" hidden>All players PDF</button>
       </div>
@@ -199,33 +201,27 @@ footer img{height:14px;width:auto;display:block}
 
 <section class="wrap">
 <details class="data" id="dataSec">
-  <summary><span class="eb">Data &amp; settings · coach only, never printed</span>Connect the Athletes, GPS Data and Results tabs</summary>
+  <summary><span class="eb">Data &amp; settings · coach only, never printed</span>Google Sheet connection</summary>
   <p class="lead" id="frameNote"></p>
-  <div class="slots">
-    <div class="slot"><h4>1 · Athletes</h4>
-      <label for="athUrl">Published CSV link or Sheet ID</label><input type="text" id="athUrl" placeholder="link or sheet ID">
-      <label for="athTab">Tab name</label><input type="text" id="athTab" value="Athletes">
-      <label for="athFile">or CSV file</label><input type="file" id="athFile" accept=".csv,text/csv">
-      <label for="athPaste">or paste CSV</label><textarea id="athPaste" placeholder="id,name,position,age,height_cm,weight_kg"></textarea>
-    </div>
-    <div class="slot"><h4>2 · GPS data</h4>
-      <label for="gpsUrl">Published CSV link or Sheet ID</label><input type="text" id="gpsUrl" placeholder="link or sheet ID">
-      <label for="gpsTab">Tab name</label><input type="text" id="gpsTab" value="GPS Data">
-      <label for="gpsFile">or CSV file</label><input type="file" id="gpsFile" accept=".csv,text/csv">
-      <label for="gpsPaste">or paste CSV</label><textarea id="gpsPaste" placeholder="date,player,session_name,total_duration_min,total_distance,hsr_19_8,..."></textarea>
-    </div>
-    <div class="slot"><h4>3 · Max-speed test <span style="font-weight:400;color:var(--muted)">(optional)</span></h4>
-      <label for="resUrl">Published CSV link or Sheet ID</label><input type="text" id="resUrl" placeholder="leave blank to skip">
-      <label for="resTab">Tab name</label><input type="text" id="resTab" value="Results">
-      <label for="resFile">or CSV file</label><input type="file" id="resFile" accept=".csv,text/csv">
-      <label for="resPaste">or paste CSV</label><textarea id="resPaste" placeholder="player,max_vel_ms"></textarea>
-    </div>
+  <div class="slots" style="grid-template-columns:minmax(0,2fr) repeat(3,minmax(0,1fr))">
+    <div class="slot"><h4>Spreadsheet</h4><label for="sheetId">Sheet link or ID</label><input type="text" id="sheetId" placeholder="https://docs.google.com/spreadsheets/d/…"></div>
+    <div class="slot"><h4>Athletes tab</h4><label for="athTab">Tab name</label><input type="text" id="athTab" value="Athletes"></div>
+    <div class="slot"><h4>GPS tab</h4><label for="gpsTab">Tab name</label><input type="text" id="gpsTab" value="GPS Data"></div>
+    <div class="slot"><h4>Max-speed tab</h4><label for="resTab">Tab name (optional)</label><input type="text" id="resTab" value="Results"></div>
   </div>
   <div class="btns">
-    <button class="btn" id="btnLoad" type="button">Load &amp; join</button>
+    <button class="btn" id="btnSync" type="button">Sync from sheet</button>
     <button class="btn ghost" id="btnEx" type="button">Load example squad</button>
     <span class="msg" id="loadMsg"></span>
   </div>
+  <details style="margin-top:20px"><summary class="eb" style="cursor:pointer;list-style:none">Or use CSV files instead ▾</summary>
+    <div class="slots">
+      <div class="slot"><h4>Athletes</h4><label for="athFile">CSV file</label><input type="file" id="athFile" accept=".csv,text/csv"><label for="athPaste">or paste CSV</label><textarea id="athPaste"></textarea></div>
+      <div class="slot"><h4>GPS data</h4><label for="gpsFile">CSV file</label><input type="file" id="gpsFile" accept=".csv,text/csv"><label for="gpsPaste">or paste CSV</label><textarea id="gpsPaste"></textarea></div>
+      <div class="slot"><h4>Max-speed</h4><label for="resFile">CSV file</label><input type="file" id="resFile" accept=".csv,text/csv"><label for="resPaste">or paste CSV</label><textarea id="resPaste"></textarea></div>
+    </div>
+    <div class="btns"><button class="btn ghost" id="btnCsv" type="button">Load CSVs</button></div>
+  </details>
   <div class="fld"><label for="coachName">Coach name on reports</label><input id="coachName" type="text" placeholder="e.g. Henri Joensuu"></div>
   <div id="checks"></div>
 </details>
@@ -482,8 +478,8 @@ function render(){
 }
 function emptyView(){
   $("pSel").hidden=$("mSel").hidden=$("btnPrint").hidden=$("btnPrintAll").hidden=true;
-  $("heroBody").innerHTML=`<div class="heroGrid" style="grid-template-columns:1fr"><div><div class="eb">GPS match report</div><h1>No data loaded yet.</h1><p class="sub">Connect your sheet or add the CSV tabs under "Data &amp; settings".</p><div class="btns"><button class="btn" id="heroEx" type="button">Load example squad</button></div></div></div>`;
-  $("main").innerHTML="";$("heroEx").onclick=loadExample;
+  $("heroBody").innerHTML=`<div class="heroGrid" style="grid-template-columns:1fr"><div><div class="eb">GPS match report</div><h1>Connecting to your sheet…</h1><p class="sub" id="emptySub">Pulling Athletes, GPS Data and Results from your Google Sheet.</p><div class="btns"><button class="btn" id="heroSync" type="button">Sync from sheet</button><button class="btn ghost" id="heroEx" type="button">Load example squad</button></div></div></div>`;
+  $("main").innerHTML="";$("heroEx").onclick=loadExample;$("heroSync").onclick=()=>syncSheet(false);const lm=$("loadMsg");if(lm&&lm.classList.contains("err")){$("emptySub").textContent=lm.textContent;document.querySelector(".hero h1").textContent="Couldn\u2019t load your sheet yet.";}
 }
 
 /* ================= Data build ================= */
@@ -527,26 +523,67 @@ $("btnPrintAll").addEventListener("click",()=>{
 });
 window.addEventListener("afterprint",()=>{document.body.classList.remove("pall");$("printAll").innerHTML="";});
 
-function sheetCsvUrl(input,tab){input=input.trim();if(/output=csv/i.test(input))return input;if(/\/pub/i.test(input))return input+(input.includes("?")?"&":"?")+"output=csv";
-  let id=input;const mm=input.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);if(mm)id=mm[1];return `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab||"Sheet1")}`;}
+/* ================= Google Sheet sync ================= */
+const DEFAULT_SHEET="1OBjzQmeFLxI75vu4h-tJen8gsgoG3F5RaW8UNhCKXcc";
+const XLSX_MIME="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const sheetIdOf=s=>{s=(s||"").trim();const m=s.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);return m?m[1]:s;};
+let MCP;const mcpReady=(window.claude&&window.claude.use)?window.claude.use("mcp").catch(()=>null):Promise.resolve(null);
+function setStatus(t,cls){const m=$("loadMsg");m.className="msg"+(cls?" "+cls:"");m.textContent=t;const b=$("btnSyncTop");if(b)b.textContent=t.length<28?t:(cls==="err"?"Sync failed":"Sync");}
+function findB64(r){let p=r&&r.payload;if(typeof p==="string"){try{p=JSON.parse(p)}catch(e){}}
+  if(p&&typeof p==="object"&&p.content)return p.content;
+  for(const b of (r&&r.content)||[]){if(b.type==="text"){try{const j=JSON.parse(b.text);if(j.content)return j.content;}catch(e){}}}
+  return null;}
+function tabCsv(wb,name){if(!name)return "";const n=wb.SheetNames.find(s=>s.trim().toLowerCase()===name.trim().toLowerCase());return n?XLSX.utils.sheet_to_csv(wb.Sheets[n],{dateNF:"yyyy-mm-dd",blankrows:false}):null;}
+async function viaDrive(id){
+  const r=await MCP.callTool("Google Drive","download_file_content",{fileId:id,exportMimeType:XLSX_MIME},{cache:false});
+  const b64=findB64(r);if(!b64)throw {code:"tool_error",message:"The sheet came back empty."};
+  const wb=XLSX.read(b64,{type:"base64",cellDates:true});
+  const ath=tabCsv(wb,$("athTab").value),gps=tabCsv(wb,$("gpsTab").value),res=tabCsv(wb,$("resTab").value);
+  if(gps==null)throw {code:"no_tab",message:`No tab called "${$("gpsTab").value}". Tabs found: ${wb.SheetNames.join(", ")}.`};
+  return {ath:ath||"",gps,res:res||""};
+}
+async function viaGviz(id){
+  const get=async tab=>{if(!tab)return "";const r=await fetch(`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}`,{cache:"no-store"});if(!r.ok)throw {code:"http",message:"HTTP "+r.status};return r.text();};
+  const [ath,gps,res]=await Promise.all([get($("athTab").value.trim()),get($("gpsTab").value.trim()),get($("resTab").value.trim()).catch(()=>"")]);
+  return {ath,gps,res};
+}
+const SYNC_MSG={
+  needs_reauth:"Google Drive needs reconnecting: claude.ai Settings → Connectors.",
+  server_not_connected:"Connect Google Drive in claude.ai Settings → Connectors, then press Sync.",
+  selection_required:"Choose which Google Drive connection to use in the prompt, then press Sync.",
+  not_in_manifest:"Google Drive access was declined for this page. Press Sync to allow it.",
+  approval_required:"Press Sync and approve Google Drive access to load your sheet.",
+  blocked_by_policy:"Your organisation blocks Google Drive for this page.",
+  server_unavailable:"Google Drive didn't answer. Press Sync to try again.",
+};
+async function syncSheet(auto){
+  const id=sheetIdOf($("sheetId").value);if(!id){setStatus("Add your sheet link first.","err");return false;}
+  store("sheetId",id);setStatus("Syncing…");
+  MCP=await mcpReady;
+  try{
+    const src=MCP?await viaDrive(id):await viaGviz(id);
+    if(!src.gps||!src.gps.trim())throw {code:"no_tab",message:"The GPS tab came back empty."};
+    store("src",JSON.stringify(src));store("ex","0");build(src);if(!auto){SEL=null;MIDX=null;}render();
+    setStatus(`Synced ${new Date().toLocaleTimeString("en-AU",{hour:"2-digit",minute:"2-digit"})}`,"ok");return true;
+  }catch(e){
+    const c=e&&e.code;let t=SYNC_MSG[c]||(c==="tool_error"?"Google Drive couldn't open that sheet. Check the link and that this Google account can see it.":c==="no_tab"?e.message:
+      MCP?("Couldn't sync: "+((e&&e.message)||c||"unknown error")):(framed?"Sheet sync needs the Google Drive connection here. Press Sync again, or use CSV files.":"Couldn't reach the sheet. Share it as \"Anyone with the link can view\", then press Sync."));
+    setStatus(t,"err");if(!DATA.players.length)render();return false;
+  }
+}
 ["ath","gps","res"].forEach(k=>{
   $(k+"File").addEventListener("change",e=>{const f=e.target.files[0];if(f)f.text().then(t=>{$(k+"Paste").value=t;});});
-  ["Url","Tab"].forEach(s=>{const el=$(k+s),v=load(k+s);if(v!=null)el.value=v;el.addEventListener("change",()=>store(k+s,el.value.trim()));});
+  const el=$(k+"Tab"),v=load(k+"Tab");if(v!=null)el.value=v;el.addEventListener("change",()=>store(k+"Tab",el.value.trim()));
 });
-async function getSrc(k){const paste=$(k+"Paste").value.trim();if(paste)return paste;const url=$(k+"Url").value.trim();if(!url)return "";
-  const r=await fetch(sheetCsvUrl(url,$(k+"Tab").value.trim()),{cache:"no-store"});if(!r.ok)throw new Error(k+": HTTP "+r.status);return await r.text();}
-$("btnLoad").addEventListener("click",async()=>{
-  const msg=$("loadMsg");msg.className="msg";msg.textContent="Loading…";
-  try{const [ath,gps,res]=await Promise.all(["ath","gps","res"].map(k=>getSrc(k).catch(e=>{if(k==="res")return "";throw e;})));
-    if(!gps)throw new Error("Add the GPS data (sheet link, file or pasted CSV).");
-    store("src",JSON.stringify({ath,gps,res}));build({ath,gps,res});SEL=null;MIDX=null;render();
-    msg.className="msg ok";msg.textContent=`Loaded ${DATA.players.length} players.`;
-  }catch(e){msg.className="msg err";msg.textContent=(framed?"Live Sheet links can't load inside this preview. Use a CSV file or paste the CSV, or open the HTML file directly. ":"")+e.message;}
-});
+$("sheetId").value=load("sheetId")||DEFAULT_SHEET;
+$("btnSync").addEventListener("click",()=>syncSheet(false));
+$("btnSyncTop").addEventListener("click",()=>syncSheet(false));
+$("btnCsv").addEventListener("click",()=>{const src={ath:$("athPaste").value,gps:$("gpsPaste").value,res:$("resPaste").value};
+  if(!src.gps.trim()){setStatus("Add the GPS CSV first.","err");return;}store("src",JSON.stringify(src));store("ex","0");build(src);SEL=null;MIDX=null;render();setStatus(`Loaded ${DATA.players.length} players from CSV.`,"ok");});
 $("btnEx").addEventListener("click",loadExample);
 $("coachName").value=load("coach")||"";
 $("coachName").addEventListener("input",e=>{store("coach",e.target.value.trim());render();});
-$("frameNote").innerHTML=framed?"Inside this preview, load data from CSV files or pasted CSV. Live Google Sheet sync and PDF export work when you open the HTML file in a browser or host it.":"Paste a publish-to-web CSV link, or a Sheet ID plus tab name (shared as \"anyone with the link can view\"). Files and pasted CSV work too. Players are joined on name, or on id if both tabs have it.";
+$("frameNote").innerHTML="The report pulls straight from your Google Sheet: Athletes, GPS Data and the Results tab for tested max speed. Here on claude.ai it reads the sheet through your Google Drive connection, and asks once for access. As a hosted HTML file it reads the sheet directly, which needs the sheet shared as \"Anyone with the link can view\". It syncs every time the report opens.";
 
 /* ================= Example squad (fictional) ================= */
 function rng(seed){return ()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
@@ -562,13 +599,12 @@ function exampleCsv(){
       gps.push([dates[i].toISOString().slice(0,10),n,"Match",f,mins,Math.round(dpm*mins),hsr,Math.max(1,Math.round(sd_/24)),sd_,Math.round(N(68,7)*mins/90),+(vmax*3.6*pct).toFixed(1),Math.round(N(165,3))]);});});
   return {ath:Papa.unparse(ath),gps:Papa.unparse(gps),res:Papa.unparse(res)};
 }
-function loadExample(){const s=exampleCsv();$("athPaste").value=s.ath;$("gpsPaste").value=s.gps;$("resPaste").value=s.res;store("src",JSON.stringify(s));build(s);SEL=null;MIDX=null;render();$("loadMsg").className="msg ok";$("loadMsg").textContent="Example squad loaded (fictional players).";}
+function loadExample(){const s=exampleCsv();$("athPaste").value=s.ath;$("gpsPaste").value=s.gps;$("resPaste").value=s.res;store("src",JSON.stringify(s));build(s);SEL=null;MIDX=null;render();store("ex","1");setStatus("Example squad loaded (fictional players). Press Sync to go back to your sheet.","ok");}
 
 (function start(){
   let src=null;try{src=JSON.parse(load("src")||"null");}catch(e){}
-  if(!src||!src.gps)src=exampleCsv();
-  $("athPaste").value=src.ath||"";$("gpsPaste").value=src.gps||"";$("resPaste").value=src.res||"";
-  build(src);fromHash();render();
+  if(src&&src.gps&&load("ex")!=="1"){build(src);fromHash();render();}else{render();}
+  syncSheet(true).then(()=>fromHash());
 })();
 </script>
 </body>
